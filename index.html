@@ -6,19 +6,17 @@
 <title>MSM KURUKA UNIT</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- Firebase Realtime Database SDK (FREE - no billing required) -->
+
+<!-- ✅ Firebase Realtime Database (FREE - no billing needed) -->
 <script type="module">
-// ============================================================
-// FIREBASE CONFIG
-// 1. Go to Firebase Console → Project Settings → Your Apps → Web App
-// 2. Copy your config values below
-// 3. Also set databaseURL to your Realtime Database URL
-// ============================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
+// ============================================================
+// 👇 PASTE YOUR FIREBASE CONFIG HERE
+// ============================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
+   apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
   authDomain: "msm-kuruka-a7039.firebaseapp.com",
   databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com",
   projectId: "msm-kuruka-a7039",
@@ -26,69 +24,57 @@ const firebaseConfig = {
   messagingSenderId: "81796913370",
   appId: "1:81796913370:web:866f864b26e58c4a4b6de3",
   databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com"
-  // Example: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com"
+  // e.g. "https://msm-kuruka-xxxxx-default-rtdb.firebaseio.com"
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const rtdb = getDatabase(firebaseApp);
+const app = initializeApp(firebaseConfig);
+const rtdb = getDatabase(app);
 
-// ============================================================
-// DB LAYER using Firebase Realtime Database (FREE plan)
-// ============================================================
+// Shared DB object — cache so DB.get() stays synchronous
+window._DB_CACHE = {};
+window._DB_READY = false;
+
 window.DB = {
-  _cache: {},
-
-  async init() {
-    const keys = ['superadmin','members','admins','programs','transactions','logo'];
-    const loads = keys.map(async k => {
-      try {
-        const snap = await get(ref(rtdb, 'msmdata/' + k));
-        if (snap.exists()) this._cache[k] = snap.val();
-      } catch(e) { console.warn('DB init key:', k, e); }
-    });
-    await Promise.all(loads);
-    console.log('✅ Firebase Realtime DB ready');
-  },
-
   get(k) {
-    return this._cache[k] !== undefined ? this._cache[k] : null;
+    return window._DB_CACHE[k] !== undefined ? window._DB_CACHE[k] : null;
   },
-
-  async set(k, v) {
-    this._cache[k] = v;
-    try {
-      await set(ref(rtdb, 'msmdata/' + k), v);
-    } catch(e) { console.error('DB set error:', k, e); }
+  set(k, v) {
+    window._DB_CACHE[k] = v;
+    set(ref(rtdb, 'msmdata/' + k), v).catch(e => console.error('DB.set error', k, e));
   },
-
-  async del(k) {
-    delete this._cache[k];
-    try {
-      await remove(ref(rtdb, 'msmdata/' + k));
-    } catch(e) { console.error('DB del error:', k, e); }
+  del(k) {
+    delete window._DB_CACHE[k];
+    remove(ref(rtdb, 'msmdata/' + k)).catch(e => console.error('DB.del error', k, e));
   }
 };
 
-// Boot the app after Firebase is ready
-window.addEventListener('DOMContentLoaded', async () => {
-  // Show loading overlay
-  const loadDiv = document.createElement('div');
-  loadDiv.id = 'firebaseLoader';
-  loadDiv.style.cssText = 'position:fixed;inset:0;background:#070b14;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;font-family:Orbitron,monospace;color:#00d4ff;';
-  loadDiv.innerHTML = '<div style="font-size:14px;letter-spacing:3px;margin-bottom:16px;">MSM KURUKA UNIT</div><div style="font-size:11px;color:#7a9cc0;letter-spacing:2px;">Connecting to database...</div>';
-  document.body.appendChild(loadDiv);
-
+// Load all data from Firebase into cache, then start the app
+async function firebaseInit() {
+  const loader = document.getElementById('firebaseLoader');
   try {
-    await window.DB.init();
-    loadDiv.remove();
+    const keys = ['superadmin','members','admins','programs','transactions','logo'];
+    await Promise.all(keys.map(async k => {
+      const snap = await get(ref(rtdb, 'msmdata/' + k));
+      if (snap.exists()) window._DB_CACHE[k] = snap.val();
+    }));
+    window._DB_READY = true;
+    if (loader) loader.remove();
+    // Now safe to call init() — DB cache is populated
+    init();
   } catch(e) {
-    console.error('Firebase init failed:', e);
-    loadDiv.innerHTML = '<div style="color:#ff3b5c;font-size:13px;text-align:center;padding:24px;">⚠️ Could not connect to Firebase.<br><br><span style="font-size:11px;color:#7a9cc0;">Check that your firebaseConfig and databaseURL are correct in the HTML file.</span></div>';
-    return;
+    console.error('Firebase connection failed:', e);
+    if (loader) loader.innerHTML = `
+      <div style="color:#ff3b5c;font-size:14px;text-align:center;padding:32px;max-width:400px;">
+        ⚠️ Firebase connection failed<br><br>
+        <span style="font-size:12px;color:#7a9cc0;line-height:1.8;">
+          Make sure you filled in your Firebase config<br>
+          (apiKey, databaseURL etc.) correctly in the HTML file.
+        </span>
+      </div>`;
   }
+}
 
-  if (typeof init === 'function') init();
-});
+document.addEventListener('DOMContentLoaded', firebaseInit);
 </script>
 <style>
 :root {
@@ -630,7 +616,7 @@ input[type=checkbox] {
     <div class="sidebar-footer">
       <div class="user-info">
         <div class="user-avatar" id="userAvatar">SA</div>
-        <div><div class="user-name" id="userNameDisplay">Admin</div><div class="user-email" id="userEmailDisplay"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="29484d44404769445a44074a4644">[email&#160;protected]</a></div></div>
+        <div><div class="user-name" id="userNameDisplay">Admin</div><div class="user-email" id="userEmailDisplay"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7312171e1a1d331e001e5d101c1e">[email&#160;protected]</a></div></div>
       </div>
       <button class="btn btn-danger btn-full btn-sm" onclick="doLogout()">⏻ Logout</button>
     </div>
@@ -832,21 +818,28 @@ input[type=checkbox] {
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ============================================================
-// DATA LAYER - Firebase (window.DB set by module above)
-// DB.get(k)      → sync, returns cached value
-// DB.set(k,v)    → async, writes to Firestore + cache
-// DB.del(k)      → async, deletes from Firestore + cache
-// All existing code using DB.get() works unchanged.
-// DB.set() / DB.del() fire-and-forget (no await needed).
+// DATA LAYER — backed by Firebase (window.DB set by module above)
+// DB.get/set/del work exactly as before — no other code changes needed
 // ============================================================
-// Proxy so DB.set/del work without await throughout legacy code:
-const DB = new Proxy({}, {
-  get(_, prop) {
-    if (!window.DB) return () => {};
-    return window.DB[prop].bind(window.DB);
-  }
+
+// Loading screen shown while Firebase connects
+document.addEventListener('DOMContentLoaded', () => {
+  const loader = document.createElement('div');
+  loader.id = 'firebaseLoader';
+  loader.style.cssText = [
+    'position:fixed','inset:0','z-index:99999',
+    'background:#070b14','display:flex','flex-direction:column',
+    'align-items:center','justify-content:center',
+    'font-family:Orbitron,monospace'
+  ].join(';');
+  loader.innerHTML = `
+    <div style="color:#00d4ff;font-size:13px;letter-spacing:3px;margin-bottom:12px;">MSM KURUKA UNIT</div>
+    <div style="color:#7a9cc0;font-size:11px;letter-spacing:2px;">Connecting to database...</div>
+    <div style="margin-top:20px;width:40px;height:40px;border:3px solid #1e3a5f;border-top-color:#00d4ff;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+  document.body.appendChild(loader);
 });
 
 // ============================================================
@@ -1739,12 +1732,7 @@ function saveSettings() {
   document.getElementById('userNameDisplay').textContent=sa.name;
   document.getElementById('userEmailDisplay').textContent=sa.email;
   updateLogos();
-  toast('Settings saved','success');
-}
-
-function clearAllData() {
-  document.getElementById('deleteMsg').textContent='⚠ This will DELETE ALL members, transactions, and programmes. Super admin account will be kept. Are you absolutely sure?';
-  document.getElementById('deleteConfirmBtn').onclick=()=>{
+  toast('Settings savdocument.getElementById('deleteConfirmBtn').onclick=()=>{
     DB.set('members',[]); DB.set('admins',[]); DB.set('programs',[]); DB.set('transactions',[]);
     toast('All data cleared','warning'); closeModal('deleteModal'); renderSettingsPage();
   };
@@ -1767,4 +1755,12 @@ function closeSidebar() {
 // INIT
 // ============================================================
 function init() {
-  cons
+  const sa=DB.get('superadmin');
+  if(!sa) { document.getElementById('loginPage').style.display='none'; document.getElementById('setupPage').style.display='flex'; }
+  else { showLoginPage(); }
+}
+
+// init() is now called by Firebase after data loads — do NOT call it here directly
+</script>
+</body>
+</html>

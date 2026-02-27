@@ -16,7 +16,7 @@ import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/fire
 // 👇 PASTE YOUR FIREBASE CONFIG HERE (from Firebase Console)
 // ============================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
+ apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
   authDomain: "msm-kuruka-a7039.firebaseapp.com",
   databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com",
   projectId: "msm-kuruka-a7039",
@@ -45,8 +45,9 @@ async function startApp() {
       const snap = await get(ref(rtdb, 'msmdata/' + k));
       if (snap.exists()) window._DB_CACHE[k] = snap.val();
     }));
+    window._DB_READY = true; // ← tells doLogin() the cache is ready
     if (loader) loader.remove();
-    init(); // safe to call now — cache is ready
+    init();
   } catch(e) {
     console.error('Firebase error:', e);
     if (loader) loader.innerHTML = `
@@ -55,7 +56,8 @@ async function startApp() {
         <span style="font-size:11px;color:#7a9cc0;">
           Check your firebaseConfig values in the HTML file<br>
           (especially databaseURL)
-        </span>
+        </span><br>
+        <button onclick="location.reload()" style="margin-top:16px;padding:10px 24px;background:#00d4ff;color:#000;border:none;border-radius:8px;font-family:Orbitron,monospace;font-size:12px;cursor:pointer;letter-spacing:1px;">↺ RETRY</button>
       </div>`;
   }
 }
@@ -552,6 +554,7 @@ input[type=checkbox] {
       <div class="input-eye"><input type="password" id="loginPass" placeholder="Enter password" onkeypress="if(event.key==='Enter')doLogin()"><button class="eye-btn" onclick="togglePass('loginPass')">👁</button></div>
     </div>
     <button class="btn btn-primary btn-full" style="margin-bottom:16px;" onclick="doLogin()">⚡ Login</button>
+    <div id="dbStatus" style="text-align:center;font-size:12px;color:#ffaa00;margin-bottom:8px;display:none;">⏳ Connecting to database...</div>
     <div class="flex-center"><span class="forgot-link" onclick="openForgot()">Forgot Password?</span></div>
     <div class="divider"></div>
     <div class="text-sm" style="text-align:center;color:var(--text3);">Secure Management Portal</div>
@@ -814,6 +817,27 @@ const DB = {
   del(k)    { if (window.DB) return window.DB.del(k); }
 };
 
+// ============================================================
+// GOOGLE SHEETS AUTO-SYNC
+// Paste your Apps Script Web App URL below after deploying
+// ============================================================
+const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+// e.g. "https://script.google.com/macros/s/AKfycbXXXX/exec"
+
+function syncToGoogleSheet() {
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("PASTE_YOUR")) return;
+  const transactions = DB.get('transactions') || [];
+  const programs     = DB.get('programs')     || [];
+  fetch(APPS_SCRIPT_URL, {
+    method : "POST",
+    mode   : "no-cors", // avoids CORS error — Apps Script handles it
+    headers: { "Content-Type": "text/plain" },
+    body   : JSON.stringify({ action: "syncAll", transactions, programs })
+  })
+  .then(() => toast("✅ Google Sheet updated", "success"))
+  .catch(err => console.warn("Sheet sync failed (non-critical):", err));
+}
+
 // Show loading spinner immediately while Firebase connects
 document.addEventListener('DOMContentLoaded', () => {
   const d = document.createElement('div');
@@ -951,27 +975,38 @@ function completeSetup() {
 // ============================================================
 let currentUser = null;
 
-function showLoginPage() {
-  document.getElementById('loginPage').style.display='flex';
-  updateLogos();
-}
-
 function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
-  const pass = document.getElementById('loginPass').value;
-  if(!email||!pass) { toast('Please enter email and password','warning'); return; }
+  const pass  = document.getElementById('loginPass').value;
+  if (!email || !pass) { toast('Please enter email and password','warning'); return; }
+
+  // If Firebase is still loading, wait and retry
+  if (!window._DB_READY) {
+    toast('Connecting to database, please wait...','info');
+    const btn = document.querySelector('#loginPage .btn-primary');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Connecting...'; }
+    const interval = setInterval(() => {
+      if (window._DB_READY) {
+        clearInterval(interval);
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ Login'; }
+        doLogin(); // retry now that DB is ready
+      }
+    }, 300);
+    return;
+  }
+
   const sa = DB.get('superadmin');
-  if(sa && sa.email.toLowerCase()===email.toLowerCase() && sa.pass===pass) {
+  if (sa && sa.email.toLowerCase() === email.toLowerCase() && sa.pass === pass) {
     currentUser = { ...sa, role:'superadmin' };
-    document.getElementById('loginPage').style.display='none';
+    document.getElementById('loginPage').style.display = 'none';
     launchApp();
     return;
   }
   const admins = DB.get('admins') || [];
-  const adm = admins.find(a=>a.email.toLowerCase()===email.toLowerCase() && a.pass===pass);
-  if(adm) {
+  const adm = admins.find(a => a.email.toLowerCase() === email.toLowerCase() && a.pass === pass);
+  if (adm) {
     currentUser = { ...adm, role:'admin' };
-    document.getElementById('loginPage').style.display='none';
+    document.getElementById('loginPage').style.display = 'none';
     launchApp();
     return;
   }
@@ -1655,6 +1690,7 @@ function saveTxn() {
   if(editId) { txns[txns.findIndex(t=>t.id===editId)]=data; toast('Transaction updated','success'); }
   else { txns.push(data); toast('Transaction added','success'); }
   DB.set('transactions',txns); closeModal('txnModal');
+  syncToGoogleSheet();
   if(currentUser.role==='superadmin') renderFinancePage(); else renderAdminFinancePage();
 }
 function confirmDeleteTxn(id) {
@@ -1662,6 +1698,7 @@ function confirmDeleteTxn(id) {
   document.getElementById('deleteConfirmBtn').onclick=()=>{
     DB.set('transactions',(DB.get('transactions')||[]).filter(t=>t.id!==id));
     toast('Transaction deleted','success'); closeModal('deleteModal');
+    syncToGoogleSheet();
     if(currentUser.role==='superadmin') renderFinancePage(); else renderAdminFinancePage();
   };
   openModal('deleteModal');
@@ -1765,6 +1802,14 @@ function init() {
   } else {
     showLoginPage();
   }
+}
+
+function showLoginPage() {
+  document.getElementById('loginPage').style.display = 'flex';
+  // Hide the status bar — DB is ready by the time init() is called
+  const s = document.getElementById('dbStatus');
+  if (s) s.style.display = 'none';
+  updateLogos();
 }
 </script>
 </body>

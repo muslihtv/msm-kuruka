@@ -15,10 +15,10 @@ import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/fire
 // ============================================================
 // 👇 PASTE YOUR FIREBASE CONFIG HERE
 // ============================================================
+// ============================================================
 const firebaseConfig = {
    apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
   authDomain: "msm-kuruka-a7039.firebaseapp.com",
-  databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com",
   projectId: "msm-kuruka-a7039",
   storageBucket: "msm-kuruka-a7039.firebasestorage.app",
   messagingSenderId: "81796913370",
@@ -30,25 +30,42 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const rtdb = getDatabase(app);
 
-// Shared DB object — cache so DB.get() stays synchronous
+// In-memory cache — DB.get() is always synchronous
 window._DB_CACHE = {};
-window._DB_READY = false;
 
 window.DB = {
   get(k) {
-    return window._DB_CACHE[k] !== undefined ? window._DB_CACHE[k] : null;
+    return (window._DB_CACHE[k] !== undefined) ? window._DB_CACHE[k] : null;
   },
+  // Returns a Promise so callers can await if needed
   set(k, v) {
     window._DB_CACHE[k] = v;
-    set(ref(rtdb, 'msmdata/' + k), v).catch(e => console.error('DB.set error', k, e));
+    return set(ref(rtdb, 'msmdata/' + k), v)
+      .catch(e => console.error('DB.set error', k, e));
   },
   del(k) {
     delete window._DB_CACHE[k];
-    remove(ref(rtdb, 'msmdata/' + k)).catch(e => console.error('DB.del error', k, e));
+    return remove(ref(rtdb, 'msmdata/' + k))
+      .catch(e => console.error('DB.del error', k, e));
   }
 };
 
-// Load all data from Firebase into cache, then start the app
+// Called by firebaseInit after all data is in cache
+window._appStart = function() {
+  const sa = window.DB.get('superadmin');
+  const loader = document.getElementById('firebaseLoader');
+  if (loader) loader.remove();
+  if (!sa) {
+    // First run — show setup
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('setupPage').style.display = 'flex';
+  } else {
+    // Already set up — show login
+    document.getElementById('loginPage').style.display = 'flex';
+    updateLogos();
+  }
+};
+
 async function firebaseInit() {
   const loader = document.getElementById('firebaseLoader');
   try {
@@ -57,18 +74,14 @@ async function firebaseInit() {
       const snap = await get(ref(rtdb, 'msmdata/' + k));
       if (snap.exists()) window._DB_CACHE[k] = snap.val();
     }));
-    window._DB_READY = true;
-    if (loader) loader.remove();
-    // Now safe to call init() — DB cache is populated
-    init();
+    window._appStart();
   } catch(e) {
     console.error('Firebase connection failed:', e);
     if (loader) loader.innerHTML = `
-      <div style="color:#ff3b5c;font-size:14px;text-align:center;padding:32px;max-width:400px;">
-        ⚠️ Firebase connection failed<br><br>
-        <span style="font-size:12px;color:#7a9cc0;line-height:1.8;">
-          Make sure you filled in your Firebase config<br>
-          (apiKey, databaseURL etc.) correctly in the HTML file.
+      <div style="color:#ff3b5c;font-size:14px;text-align:center;padding:32px;max-width:400px;line-height:2;">
+        ⚠️ Firebase connection failed<br>
+        <span style="font-size:11px;color:#7a9cc0;">
+          Check your firebaseConfig values<br>(apiKey, databaseURL) in the HTML file.
         </span>
       </div>`;
   }
@@ -554,7 +567,7 @@ input[type=checkbox] {
 </div>
 
 <!-- LOGIN PAGE -->
-<div id="loginPage">
+<div id="loginPage" style="display:none">
   <div class="login-box">
     <div class="logo-wrap">
       <div class="logo-placeholder" id="loginLogoImg">🏛️</div>
@@ -938,14 +951,21 @@ function completeSetup() {
   if(!name||!phone||!email||!pass||!secQ||!secA) { toast('Please fill all required fields','error'); return; }
   if(pass.length < 6) { toast('Password must be at least 6 characters','error'); return; }
   const sa = { name, phone, email, pass, secQ, secA, orgName, role:'superadmin', createdAt:new Date().toISOString() };
-  DB.set('superadmin', sa);
-  if(setupLogoData) DB.set('logo', setupLogoData);
-  DB.set('programs', []);
-  DB.set('transactions', []);
-  DB.set('members', []);
-  DB.set('admins', []);
-  toast('Account created successfully!','success');
-  setTimeout(()=>{ document.getElementById('setupPage').style.display='none'; showLoginPage(); }, 1000);
+  toast('Creating account, please wait...','info');
+  // Wait for all Firebase writes before showing login
+  Promise.all([
+    DB.set('superadmin', sa),
+    setupLogoData ? DB.set('logo', setupLogoData) : Promise.resolve(),
+    DB.set('programs', []),
+    DB.set('transactions', []),
+    DB.set('members', []),
+    DB.set('admins', [])
+  ]).then(() => {
+    toast('Account created! You can now log in.','success');
+    setTimeout(()=>{ document.getElementById('setupPage').style.display='none'; showLoginPage(); }, 1200);
+  }).catch(() => {
+    toast('Error saving to Firebase. Check your config.','error');
+  });
 }
 
 // ============================================================
@@ -1755,12 +1775,16 @@ function closeSidebar() {
 // INIT
 // ============================================================
 function init() {
-  const sa=DB.get('superadmin');
-  if(!sa) { document.getElementById('loginPage').style.display='none'; document.getElementById('setupPage').style.display='flex'; }
-  else { showLoginPage(); }
+  const sa = DB.get('superadmin');
+  if (!sa) {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('setupPage').style.display = 'flex';
+  } else {
+    showLoginPage();
+  }
 }
 
-// init() is now called by Firebase after data loads — do NOT call it here directly
+// ⚠️ init() is called by Firebase after data loads — not here directly
 </script>
 </body>
 </html>

@@ -7,87 +7,60 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!-- ✅ Firebase Realtime Database (FREE - no billing needed) -->
+<!-- ✅ Firebase Realtime Database — FREE, no billing needed -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // ============================================================
-// 👇 PASTE YOUR FIREBASE CONFIG HERE
-// ============================================================
+// 👇 PASTE YOUR FIREBASE CONFIG HERE (from Firebase Console)
 // ============================================================
 const firebaseConfig = {
-   apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
+  apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
   authDomain: "msm-kuruka-a7039.firebaseapp.com",
+  databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com",
   projectId: "msm-kuruka-a7039",
   storageBucket: "msm-kuruka-a7039.firebasestorage.app",
   messagingSenderId: "81796913370",
-  appId: "1:81796913370:web:866f864b26e58c4a4b6de3",
-  databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com"
-  // e.g. "https://msm-kuruka-xxxxx-default-rtdb.firebaseio.com"
+  appId: "1:81796913370:web:866f864b26e58c4a4b6de3"
 };
 
 const app = initializeApp(firebaseConfig);
 const rtdb = getDatabase(app);
 
-// In-memory cache — DB.get() is always synchronous
+// Expose DB globally — cache makes DB.get() synchronous
 window._DB_CACHE = {};
-
 window.DB = {
-  get(k) {
-    return (window._DB_CACHE[k] !== undefined) ? window._DB_CACHE[k] : null;
-  },
-  // Returns a Promise so callers can await if needed
-  set(k, v) {
-    window._DB_CACHE[k] = v;
-    return set(ref(rtdb, 'msmdata/' + k), v)
-      .catch(e => console.error('DB.set error', k, e));
-  },
-  del(k) {
-    delete window._DB_CACHE[k];
-    return remove(ref(rtdb, 'msmdata/' + k))
-      .catch(e => console.error('DB.del error', k, e));
-  }
+  get(k)    { return window._DB_CACHE.hasOwnProperty(k) ? window._DB_CACHE[k] : null; },
+  set(k, v) { window._DB_CACHE[k] = v; return set(ref(rtdb, 'msmdata/' + k), v); },
+  del(k)    { delete window._DB_CACHE[k]; return remove(ref(rtdb, 'msmdata/' + k)); }
 };
 
-// Called by firebaseInit after all data is in cache
-window._appStart = function() {
-  const sa = window.DB.get('superadmin');
-  const loader = document.getElementById('firebaseLoader');
-  if (loader) loader.remove();
-  if (!sa) {
-    // First run — show setup
-    document.getElementById('loginPage').style.display = 'none';
-    document.getElementById('setupPage').style.display = 'flex';
-  } else {
-    // Already set up — show login
-    document.getElementById('loginPage').style.display = 'flex';
-    updateLogos();
-  }
-};
-
-async function firebaseInit() {
-  const loader = document.getElementById('firebaseLoader');
+// Load ALL data from Firebase into cache, THEN start the app
+async function startApp() {
+  const loader = document.getElementById('fbLoader');
   try {
     const keys = ['superadmin','members','admins','programs','transactions','logo'];
     await Promise.all(keys.map(async k => {
       const snap = await get(ref(rtdb, 'msmdata/' + k));
       if (snap.exists()) window._DB_CACHE[k] = snap.val();
     }));
-    window._appStart();
+    if (loader) loader.remove();
+    init(); // safe to call now — cache is ready
   } catch(e) {
-    console.error('Firebase connection failed:', e);
+    console.error('Firebase error:', e);
     if (loader) loader.innerHTML = `
-      <div style="color:#ff3b5c;font-size:14px;text-align:center;padding:32px;max-width:400px;line-height:2;">
-        ⚠️ Firebase connection failed<br>
+      <div style="color:#ff3b5c;font-size:13px;text-align:center;padding:24px;line-height:2;">
+        ⚠️ Cannot connect to Firebase<br>
         <span style="font-size:11px;color:#7a9cc0;">
-          Check your firebaseConfig values<br>(apiKey, databaseURL) in the HTML file.
+          Check your firebaseConfig values in the HTML file<br>
+          (especially databaseURL)
         </span>
       </div>`;
   }
 }
 
-document.addEventListener('DOMContentLoaded', firebaseInit);
+document.addEventListener('DOMContentLoaded', startApp);
 </script>
 <style>
 :root {
@@ -629,7 +602,7 @@ input[type=checkbox] {
     <div class="sidebar-footer">
       <div class="user-info">
         <div class="user-avatar" id="userAvatar">SA</div>
-        <div><div class="user-name" id="userNameDisplay">Admin</div><div class="user-email" id="userEmailDisplay"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7312171e1a1d331e001e5d101c1e">[email&#160;protected]</a></div></div>
+        <div><div class="user-name" id="userNameDisplay">Admin</div><div class="user-email" id="userEmailDisplay"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d3b2b7bebabd93bea0befdb0bcbe">[email&#160;protected]</a></div></div>
       </div>
       <button class="btn btn-danger btn-full btn-sm" onclick="doLogout()">⏻ Logout</button>
     </div>
@@ -831,28 +804,27 @@ input[type=checkbox] {
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-// ============================================================
-// DATA LAYER — backed by Firebase (window.DB set by module above)
-// DB.get/set/del work exactly as before — no other code changes needed
-// ============================================================
+<script>
+// DB is set by the Firebase module above (window.DB)
+// This shim makes DB.get/set/del work in all the existing code below
 
-// Loading screen shown while Firebase connects
+const DB = {
+  get(k)    { return window.DB ? window.DB.get(k) : null; },
+  set(k, v) { if (window.DB) return window.DB.set(k, v); },
+  del(k)    { if (window.DB) return window.DB.del(k); }
+};
+
+// Show loading spinner immediately while Firebase connects
 document.addEventListener('DOMContentLoaded', () => {
-  const loader = document.createElement('div');
-  loader.id = 'firebaseLoader';
-  loader.style.cssText = [
-    'position:fixed','inset:0','z-index:99999',
-    'background:#070b14','display:flex','flex-direction:column',
-    'align-items:center','justify-content:center',
-    'font-family:Orbitron,monospace'
-  ].join(';');
-  loader.innerHTML = `
-    <div style="color:#00d4ff;font-size:13px;letter-spacing:3px;margin-bottom:12px;">MSM KURUKA UNIT</div>
+  const d = document.createElement('div');
+  d.id = 'fbLoader';
+  d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#070b14;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Orbitron,monospace;gap:16px;';
+  d.innerHTML = `
+    <div style="color:#00d4ff;font-size:13px;letter-spacing:3px;">MSM KURUKA UNIT</div>
     <div style="color:#7a9cc0;font-size:11px;letter-spacing:2px;">Connecting to database...</div>
-    <div style="margin-top:20px;width:40px;height:40px;border:3px solid #1e3a5f;border-top-color:#00d4ff;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
-  document.body.appendChild(loader);
+    <div style="width:36px;height:36px;border:3px solid #1e3a5f;border-top-color:#00d4ff;border-radius:50%;animation:fbspin 0.8s linear infinite;"></div>
+    <style>@keyframes fbspin{to{transform:rotate(360deg)}}</style>`;
+  document.body.prepend(d);
 });
 
 // ============================================================
@@ -951,8 +923,9 @@ function completeSetup() {
   if(!name||!phone||!email||!pass||!secQ||!secA) { toast('Please fill all required fields','error'); return; }
   if(pass.length < 6) { toast('Password must be at least 6 characters','error'); return; }
   const sa = { name, phone, email, pass, secQ, secA, orgName, role:'superadmin', createdAt:new Date().toISOString() };
-  toast('Creating account, please wait...','info');
-  // Wait for all Firebase writes before showing login
+  toast('Saving... please wait','info');
+  const btn = document.querySelector('#setupPage .btn-primary:last-of-type');
+  if(btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
   Promise.all([
     DB.set('superadmin', sa),
     setupLogoData ? DB.set('logo', setupLogoData) : Promise.resolve(),
@@ -961,10 +934,15 @@ function completeSetup() {
     DB.set('members', []),
     DB.set('admins', [])
   ]).then(() => {
-    toast('Account created! You can now log in.','success');
-    setTimeout(()=>{ document.getElementById('setupPage').style.display='none'; showLoginPage(); }, 1200);
-  }).catch(() => {
-    toast('Error saving to Firebase. Check your config.','error');
+    toast('Super Admin created! Please log in.','success');
+    setTimeout(()=>{
+      document.getElementById('setupPage').style.display='none';
+      showLoginPage();
+    }, 1000);
+  }).catch(err => {
+    console.error(err);
+    toast('Firebase save failed — check your config','error');
+    if(btn) { btn.disabled=false; btn.textContent='Create Account & Launch →'; }
   });
 }
 
@@ -1752,7 +1730,12 @@ function saveSettings() {
   document.getElementById('userNameDisplay').textContent=sa.name;
   document.getElementById('userEmailDisplay').textContent=sa.email;
   updateLogos();
-  toast('Settings savdocument.getElementById('deleteConfirmBtn').onclick=()=>{
+  toast('Settings saved','success');
+}
+
+function clearAllData() {
+  document.getElementById('deleteMsg').textContent='⚠ This will DELETE ALL members, transactions, and programmes. Super admin account will be kept. Are you absolutely sure?';
+  document.getElementById('deleteConfirmBtn').onclick=()=>{
     DB.set('members',[]); DB.set('admins',[]); DB.set('programs',[]); DB.set('transactions',[]);
     toast('All data cleared','warning'); closeModal('deleteModal'); renderSettingsPage();
   };
@@ -1772,7 +1755,7 @@ function closeSidebar() {
 }
 
 // ============================================================
-// INIT
+// INIT — called by Firebase AFTER data is loaded into cache
 // ============================================================
 function init() {
   const sa = DB.get('superadmin');
@@ -1783,8 +1766,6 @@ function init() {
     showLoginPage();
   }
 }
-
-// ⚠️ init() is called by Firebase after data loads — not here directly
 </script>
 </body>
 </html>

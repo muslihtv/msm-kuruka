@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSM KURUKA UNIT</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase Realtime Database SDK (FREE - no billing required) -->
+<script type="module">
+// ============================================================
+// FIREBASE CONFIG
+// 1. Go to Firebase Console → Project Settings → Your Apps → Web App
+// 2. Copy your config values below
+// 3. Also set databaseURL to your Realtime Database URL
+// ============================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDipp-7wUbVXN-SedcdR0qjelzC_dFe864",
+  authDomain: "msm-kuruka-a7039.firebaseapp.com",
+  databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com",
+  projectId: "msm-kuruka-a7039",
+  storageBucket: "msm-kuruka-a7039.firebasestorage.app",
+  messagingSenderId: "81796913370",
+  appId: "1:81796913370:web:866f864b26e58c4a4b6de3",
+  databaseURL: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com"
+  // Example: "https://msm-kuruka-a7039-default-rtdb.firebaseio.com"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const rtdb = getDatabase(firebaseApp);
+
+// ============================================================
+// DB LAYER using Firebase Realtime Database (FREE plan)
+// ============================================================
+window.DB = {
+  _cache: {},
+
+  async init() {
+    const keys = ['superadmin','members','admins','programs','transactions','logo'];
+    const loads = keys.map(async k => {
+      try {
+        const snap = await get(ref(rtdb, 'msmdata/' + k));
+        if (snap.exists()) this._cache[k] = snap.val();
+      } catch(e) { console.warn('DB init key:', k, e); }
+    });
+    await Promise.all(loads);
+    console.log('✅ Firebase Realtime DB ready');
+  },
+
+  get(k) {
+    return this._cache[k] !== undefined ? this._cache[k] : null;
+  },
+
+  async set(k, v) {
+    this._cache[k] = v;
+    try {
+      await set(ref(rtdb, 'msmdata/' + k), v);
+    } catch(e) { console.error('DB set error:', k, e); }
+  },
+
+  async del(k) {
+    delete this._cache[k];
+    try {
+      await remove(ref(rtdb, 'msmdata/' + k));
+    } catch(e) { console.error('DB del error:', k, e); }
+  }
+};
+
+// Boot the app after Firebase is ready
+window.addEventListener('DOMContentLoaded', async () => {
+  // Show loading overlay
+  const loadDiv = document.createElement('div');
+  loadDiv.id = 'firebaseLoader';
+  loadDiv.style.cssText = 'position:fixed;inset:0;background:#070b14;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;font-family:Orbitron,monospace;color:#00d4ff;';
+  loadDiv.innerHTML = '<div style="font-size:14px;letter-spacing:3px;margin-bottom:16px;">MSM KURUKA UNIT</div><div style="font-size:11px;color:#7a9cc0;letter-spacing:2px;">Connecting to database...</div>';
+  document.body.appendChild(loadDiv);
+
+  try {
+    await window.DB.init();
+    loadDiv.remove();
+  } catch(e) {
+    console.error('Firebase init failed:', e);
+    loadDiv.innerHTML = '<div style="color:#ff3b5c;font-size:13px;text-align:center;padding:24px;">⚠️ Could not connect to Firebase.<br><br><span style="font-size:11px;color:#7a9cc0;">Check that your firebaseConfig and databaseURL are correct in the HTML file.</span></div>';
+    return;
+  }
+
+  if (typeof init === 'function') init();
+});
+</script>
+<style>
+:root {
+  --bg: #070b14;
+  --bg2: #0d1525;
+  --bg3: #111d35;
+  --card: #0f1928;
+  --card2: #162035;
+  --border: #1e3a5f;
+  --accent: #00d4ff;
+  --accent2: #00ff9d;
+  --accent3: #ff6b35;
+  --text: #e0eaff;
+  --text2: #7a9cc0;
+  --text3: #4a6a8a;
+  --danger: #ff3b5c;
+  --success: #00cc7a;
+  --warning: #ffaa00;
+  --glow: 0 0 20px rgba(0,212,255,0.3);
+  --glow2: 0 0 20px rgba(0,255,157,0.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+h1,h2,h3,.logo-text { font-family: 'Orbitron', monospace; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius:3px; }
+
+/* GRID BACKGROUND */
+.grid-bg {
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image: linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* LOGIN PAGE */
+#loginPage {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  position:relative; z-index:1;
+}
+.login-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 40px;
+  width: 100%; max-width: 420px;
+  position: relative;
+  box-shadow: 0 0 60px rgba(0,212,255,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.login-box::before {
+  content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:60%; height:1px; background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.logo-wrap { text-align:center; margin-bottom:32px; }
+.logo-wrap img { width:80px; height:80px; border-radius:50%; border:2px solid var(--accent); object-fit:cover; box-shadow: var(--glow); }
+.logo-placeholder {
+  width:80px; height:80px; border-radius:50%; border:2px solid var(--accent);
+  background: linear-gradient(135deg, var(--bg3), var(--card2));
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto; font-size:28px; box-shadow: var(--glow);
+}
+.org-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px; font-weight:700; letter-spacing:3px;
+  color: var(--accent); margin-top:12px; text-transform:uppercase;
+}
+.org-sub { font-size:11px; color:var(--text2); margin-top:4px; letter-spacing:1px; }
+
+/* FORM ELEMENTS */
+.form-group { margin-bottom:20px; }
+.form-group label { display:block; font-size:12px; font-weight:600; color:var(--text2); margin-bottom:8px; letter-spacing:1px; text-transform:uppercase; }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; padding:12px 16px;
+  background: var(--bg2); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:15px;
+  transition: all 0.3s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline:none; border-color:var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+}
+.form-group input::placeholder { color:var(--text3); }
+.form-group select option { background:var(--bg2); }
+
+/* BUTTONS */
+.btn {
+  padding:11px 24px; border-radius:8px; border:none; cursor:pointer;
+  font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:600; letter-spacing:1px;
+  text-transform:uppercase; transition:all 0.3s; display:inline-flex; align-items:center; gap:8px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #0099cc);
+  color: #000; box-shadow: var(--glow);
+}
+.btn-primary:hover { transform:translateY(-2px); box-shadow: 0 0 30px rgba(0,212,255,0.5); }
+.btn-success {
+  background: linear-gradient(135deg, var(--accent2), #00aa66);
+  color: #000; box-shadow: var(--glow2);
+}
+.btn-success:hover { transform:translateY(-2px); }
+.btn-danger { background: linear-gradient(135deg, var(--danger), #cc2244); color:#fff; }
+.btn-danger:hover { transform:translateY(-2px); }
+.btn-outline {
+  background:transparent; border:1px solid var(--border); color:var(--text2);
+}
+.btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+.btn-warning { background: linear-gradient(135deg, var(--warning), #cc8800); color:#000; }
+.btn-sm { padding:7px 14px; font-size:12px; }
+.btn-icon { padding:8px; border-radius:6px; }
+.btn-full { width:100%; justify-content:center; }
+
+/* FORGOT PASSWORD */
+.forgot-link { font-size:12px; color:var(--text2); cursor:pointer; transition:color 0.3s; }
+.forgot-link:hover { color:var(--accent); }
+
+/* MAIN APP */
+#app { display:none; min-height:100vh; position:relative; z-index:1; }
+
+/* SIDEBAR */
+.sidebar {
+  position:fixed; left:0; top:0; bottom:0; width:240px;
+  background: var(--bg2); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; z-index:100;
+  transition: transform 0.3s;
+}
+.sidebar-header {
+  padding:20px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:12px;
+}
+.sidebar-logo { width:40px; height:40px; border-radius:50%; border:1.5px solid var(--accent); object-fit:cover; flex-shrink:0; }
+.sidebar-logo-ph {
+  width:40px; height:40px; border-radius:50%; border:1.5px solid var(--accent);
+  background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;
+}
+.sidebar-title { font-family:'Orbitron',monospace; font-size:9px; font-weight:700; color:var(--accent); letter-spacing:2px; line-height:1.4; }
+.sidebar-role { font-size:11px; color:var(--text2); }
+.sidebar-nav { flex:1; padding:12px 0; overflow-y:auto; }
+.nav-section { padding:8px 16px 4px; font-size:10px; font-weight:600; color:var(--text3); letter-spacing:2px; text-transform:uppercase; }
+.nav-item {
+  padding:11px 16px; display:flex; align-items:center; gap:12px;
+  cursor:pointer; transition:all 0.2s; border-left:3px solid transparent; font-size:14px; font-weight:500;
+  color: var(--text2);
+}
+.nav-item:hover { background:var(--bg3); color:var(--text); border-left-color:var(--border); }
+.nav-item.active { background: linear-gradient(90deg, rgba(0,212,255,0.1), transparent); color:var(--accent); border-left-color:var(--accent); }
+.nav-item .nav-icon { font-size:18px; width:24px; text-align:center; }
+.sidebar-footer { padding:16px; border-top:1px solid var(--border); }
+.user-info { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.user-avatar {
+  width:36px; height:36px; border-radius:50%; background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display:flex; align-items:center; justify-content:center; font-family:'Orbitron',monospace; font-size:12px; color:#000; font-weight:700;
+}
+.user-name { font-size:13px; font-weight:600; color:var(--text); }
+.user-email { font-size:11px; color:var(--text2); }
+
+/* MAIN CONTENT */
+.main-content { margin-left:240px; min-height:100vh; }
+.topbar {
+  background: var(--bg2); border-bottom:1px solid var(--border);
+  padding:0 24px; height:60px; display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:50;
+}
+.topbar-title { font-family:'Orbitron',monospace; font-size:14px; font-weight:700; color:var(--text); letter-spacing:1px; }
+.topbar-actions { display:flex; align-items:center; gap:12px; }
+.hamburger { display:none; background:none; border:none; color:var(--text); font-size:20px; cursor:pointer; }
+.page-content { padding:24px; }
+
+/* CARDS */
+.card {
+  background: var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:24px; margin-bottom:20px;
+}
+.card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+.card-title { font-family:'Orbitron',monospace; font-size:13px; font-weight:700; color:var(--accent); letter-spacing:1px; }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:16px; margin-bottom:24px; }
+.stat-card {
+  background: var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:20px; position:relative; overflow:hidden;
+}
+.stat-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+}
+.stat-card.cyan::before { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+.stat-card.green::before { background: linear-gradient(90deg, transparent, var(--accent2), transparent); }
+.stat-card.orange::before { background: linear-gradient(90deg, transparent, var(--accent3), transparent); }
+.stat-card.red::before { background: linear-gradient(90deg, transparent, var(--danger), transparent); }
+.stat-label { font-size:11px; color:var(--text2); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+.stat-value { font-family:'Orbitron',monospace; font-size:24px; font-weight:700; }
+.stat-card.cyan .stat-value { color:var(--accent); }
+.stat-card.green .stat-value { color:var(--accent2); }
+.stat-card.orange .stat-value { color:var(--accent3); }
+.stat-card.red .stat-value { color:var(--danger); }
+.stat-icon { position:absolute; right:16px; top:50%; transform:translateY(-50%); font-size:36px; opacity:0.15; }
+
+/* TABLE */
+.table-controls { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+.search-box {
+  flex:1; min-width:200px; position:relative;
+}
+.search-box input {
+  width:100%; padding:9px 16px 9px 38px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:8px;
+  color:var(--text); font-family:'Rajdhani',sans-serif; font-size:14px;
+}
+.search-box input:focus { outline:none; border-color:var(--accent); }
+.search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:14px; }
+.table-wrap { overflow-x:auto; border-radius:8px; border:1px solid var(--border); }
+table { width:100%; border-collapse:collapse; font-size:14px; }
+thead { background: var(--bg3); }
+thead th {
+  padding:12px 16px; text-align:left; font-size:11px; font-weight:600;
+  color:var(--text2); letter-spacing:1px; text-transform:uppercase;
+  border-bottom:1px solid var(--border); white-space:nowrap;
+}
+tbody tr { border-bottom:1px solid rgba(30,58,95,0.5); transition:background 0.2s; }
+tbody tr:hover { background:rgba(0,212,255,0.04); }
+tbody tr:last-child { border-bottom:none; }
+tbody td { padding:12px 16px; color:var(--text); vertical-align:middle; }
+.table-actions { display:flex; gap:6px; }
+.checkbox-cell { width:40px; }
+input[type=checkbox] {
+  width:16px; height:16px; cursor:pointer;
+  accent-color:var(--accent); border-radius:4px;
+}
+.badge {
+  display:inline-block; padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:600; letter-spacing:0.5px;
+}
+.badge-cyan { background:rgba(0,212,255,0.15); color:var(--accent); border:1px solid rgba(0,212,255,0.3); }
+.badge-green { background:rgba(0,255,157,0.12); color:var(--accent2); border:1px solid rgba(0,255,157,0.25); }
+.badge-red { background:rgba(255,59,92,0.12); color:var(--danger); border:1px solid rgba(255,59,92,0.25); }
+.badge-orange { background:rgba(255,107,53,0.12); color:var(--accent3); border:1px solid rgba(255,107,53,0.25); }
+.no-data { text-align:center; padding:40px; color:var(--text3); font-size:14px; }
+
+/* MODAL */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  opacity:0; pointer-events:none; transition:opacity 0.3s;
+}
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  width:100%; max-width:560px; max-height:90vh; overflow-y:auto;
+  transform:translateY(20px); transition:transform 0.3s;
+  position:relative;
+}
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal-header {
+  padding:20px 24px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; background:var(--card); z-index:1;
+}
+.modal-title { font-family:'Orbitron',monospace; font-size:13px; color:var(--accent); letter-spacing:1px; }
+.modal-close { background:none; border:none; color:var(--text2); font-size:20px; cursor:pointer; }
+.modal-close:hover { color:var(--danger); }
+.modal-body { padding:24px; }
+.modal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px; }
+
+/* FORM GRID */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-full { grid-column: 1 / -1; }
+.form-row { display:flex; gap:12px; align-items:flex-end; }
+
+/* TOGGLE */
+.toggle-wrap { display:flex; align-items:center; gap:10px; }
+.toggle {
+  width:44px; height:24px; background:var(--bg3); border-radius:12px;
+  cursor:pointer; position:relative; transition:background 0.3s; flex-shrink:0;
+  border:1px solid var(--border);
+}
+.toggle.on { background:var(--accent); }
+.toggle::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:16px; height:16px; border-radius:50%; background:#fff;
+  transition:left 0.3s;
+}
+.toggle.on::after { left:23px; }
+.toggle-label { font-size:13px; color:var(--text2); }
+
+/* TABS */
+.tab-list { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
+.tab-btn {
+  padding:10px 20px; background:none; border:none; cursor:pointer;
+  font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:600; letter-spacing:1px;
+  text-transform:uppercase; color:var(--text2); border-bottom:2px solid transparent;
+  margin-bottom:-1px; white-space:nowrap; transition:all 0.2s;
+}
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+
+/* PROGRAM ACCORDION */
+.prog-item {
+  background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:12px;
+}
+.prog-header {
+  padding:16px 20px; display:flex; align-items:center; justify-content:space-between;
+  cursor:pointer; border-radius:10px; transition:background 0.2s;
+}
+.prog-header:hover { background:var(--card2); }
+.prog-name { font-family:'Orbitron',monospace; font-size:12px; color:var(--text); font-weight:600; }
+.prog-date { font-size:12px; color:var(--text2); }
+.prog-totals { display:flex; gap:16px; align-items:center; }
+.prog-arrow { color:var(--text3); transition:transform 0.3s; }
+.prog-arrow.open { transform:rotate(180deg); }
+.prog-body { display:none; padding:0 20px 16px; }
+.prog-body.open { display:block; }
+.prog-body table { width:100%; }
+
+/* YEAR SELECT */
+.year-filter { display:flex; align-items:center; gap:8px; }
+.year-filter select {
+  background:var(--bg2); border:1px solid var(--border); color:var(--text);
+  padding:7px 12px; border-radius:6px; font-family:'Rajdhani',sans-serif;
+  font-size:14px;
+}
+
+/* PERMISSION GRID */
+.perm-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+/* FILE UPLOAD */
+.file-upload {
+  border:2px dashed var(--border); border-radius:8px; padding:20px;
+  text-align:center; cursor:pointer; transition:border-color 0.3s;
+}
+.file-upload:hover { border-color:var(--accent); }
+.file-upload input { display:none; }
+
+/* LOGO UPLOADER */
+.logo-upload-area {
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+}
+.current-logo { width:60px; height:60px; border-radius:50%; border:2px solid var(--border); object-fit:cover; }
+.current-logo-ph {
+  width:60px; height:60px; border-radius:50%; border:2px dashed var(--border);
+  display:flex; align-items:center; justify-content:center; font-size:24px; color:var(--text3);
+}
+
+/* TOAST */
+#toast {
+  position:fixed; bottom:24px; right:24px; z-index:9999;
+  background:var(--card2); border:1px solid var(--border); border-radius:10px;
+  padding:12px 20px; display:flex; align-items:center; gap:10px;
+  transform:translateX(120%); transition:transform 0.3s; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  max-width:320px;
+}
+#toast.show { transform:translateX(0); }
+#toast.success { border-color:var(--accent2); }
+#toast.error { border-color:var(--danger); }
+#toast.info { border-color:var(--accent); }
+.toast-icon { font-size:18px; }
+.toast-msg { font-size:14px; font-weight:500; }
+
+/* MOBILE OVERLAY */
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+
+/* OTP BOXES */
+.otp-inputs { display:flex; gap:8px; justify-content:center; }
+.otp-inputs input {
+  width:44px; height:52px; text-align:center; font-size:22px; font-family:'Orbitron',monospace;
+  background:var(--bg2); border:1px solid var(--border); border-radius:8px; color:var(--text);
+}
+.otp-inputs input:focus { outline:none; border-color:var(--accent); }
+
+/* RESPONSIVE */
+@media(max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-overlay { display:block; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+  .sidebar-overlay.open { opacity:1; pointer-events:all; }
+  .main-content { margin-left:0; }
+  .hamburger { display:flex; }
+  .form-grid { grid-template-columns:1fr; }
+  .perm-grid { grid-template-columns:1fr; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .modal { max-width:100%; }
+  .topbar-title { font-size:11px; }
+  .prog-totals { flex-direction:column; gap:4px; align-items:flex-end; }
+}
+@media(max-width:480px) {
+  .page-content { padding:16px; }
+  .stats-grid { grid-template-columns:1fr; }
+  .card { padding:16px; }
+  .login-box { padding:32px 20px; }
+}
+
+/* PRINT */
+@media print { .sidebar,.topbar,.table-controls { display:none; } .main-content { margin-left:0; } }
+
+/* SETUP PAGE */
+#setupPage {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  position:relative; z-index:1; padding:20px;
+}
+.setup-box {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:40px; width:100%; max-width:500px;
+  box-shadow: 0 0 60px rgba(0,212,255,0.1);
+}
+.setup-step { display:none; }
+.setup-step.active { display:block; }
+.step-title { font-family:'Orbitron',monospace; font-size:16px; color:var(--accent); margin-bottom:8px; }
+.step-desc { font-size:13px; color:var(--text2); margin-bottom:24px; }
+
+/* INPUT WITH EYE */
+.input-eye { position:relative; }
+.input-eye input { padding-right:44px; }
+.eye-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text2); cursor:pointer; font-size:16px; }
+
+.divider { height:1px; background:var(--border); margin:20px 0; }
+.text-sm { font-size:12px; color:var(--text2); }
+.text-accent { color:var(--accent); }
+.text-success { color:var(--accent2); }
+.text-danger { color:var(--danger); }
+.mt-8 { margin-top:8px; }
+.mt-16 { margin-top:16px; }
+.flex-between { display:flex; align-items:center; justify-content:space-between; }
+.flex-center { display:flex; align-items:center; justify-content:center; }
+.gap-8 { gap:8px; }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div id="toast"><span class="toast-icon" id="toastIcon"></span><span class="toast-msg" id="toastMsg"></span></div>
+
+<!-- SETUP PAGE (first run) -->
+<div id="setupPage" style="display:none">
+  <div class="setup-box">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div class="logo-placeholder" id="setupLogoPreview" style="margin:0 auto 16px;">🏛️</div>
+      <div class="org-name">MSM KURUKA UNIT</div>
+      <div class="org-sub">Initial Setup</div>
+    </div>
+    <div class="setup-step active" id="step1">
+      <div class="step-title">Upload Organisation Logo</div>
+      <div class="step-desc">Add your organisation logo. This will appear on all pages and login screen.</div>
+      <div class="file-upload" onclick="document.getElementById('logoInput').click()">
+        <input type="file" id="logoInput" accept="image/*" onchange="previewLogo(this)">
+        <div style="font-size:32px;margin-bottom:8px;">📁</div>
+        <div style="font-size:13px;color:var(--text2);">Click to upload logo (PNG, JPG, SVG)</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">Recommended: 200×200px</div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;">
+        <button class="btn btn-outline btn-full" onclick="nextStep()">Skip</button>
+        <button class="btn btn-primary btn-full" onclick="nextStep()">Continue →</button>
+      </div>
+    </div>
+    <div class="setup-step" id="step2">
+      <div class="step-title">Create Super Admin Account</div>
+      <div class="step-desc">This is the primary administrator with full access.</div>
+      <div class="form-group"><label>Organisation Name</label><input type="text" id="setupOrgName" value="MSM KURUKA UNIT" placeholder="Organisation name"></div>
+      <div class="form-group"><label>Super Admin Name *</label><input type="text" id="setupAdminName" placeholder="Full name"></div>
+      <div class="form-group"><label>Mobile Number *</label><input type="tel" id="setupAdminPhone" placeholder="+91 XXXXX XXXXX"></div>
+      <div class="form-group"><label>Email Address *</label><input type="email" id="setupAdminEmail" placeholder="admin@example.com"></div>
+      <div class="form-group"><label>Password *</label>
+        <div class="input-eye"><input type="password" id="setupAdminPass" placeholder="Create strong password"><button class="eye-btn" onclick="togglePass('setupAdminPass')">👁</button></div>
+      </div>
+      <div class="form-group"><label>Security Question *</label>
+        <select id="setupSecQ"><option value="">Select a question</option><option value="mother">What is your mother's maiden name?</option><option value="city">What city were you born in?</option><option value="pet">What was your first pet's name?</option><option value="school">What school did you first attend?</option></select>
+      </div>
+      <div class="form-group"><label>Security Answer *</label><input type="text" id="setupSecA" placeholder="Your answer"></div>
+      <button class="btn btn-primary btn-full" onclick="completeSetup()">Create Account & Launch →</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="logo-wrap">
+      <div class="logo-placeholder" id="loginLogoImg">🏛️</div>
+      <div class="org-name" id="loginOrgName">MSM KURUKA UNIT</div>
+      <div class="org-sub">Member Management System</div>
+    </div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="loginEmail" placeholder="Enter your email" onkeypress="if(event.key==='Enter')doLogin()"></div>
+    <div class="form-group"><label>Password</label>
+      <div class="input-eye"><input type="password" id="loginPass" placeholder="Enter password" onkeypress="if(event.key==='Enter')doLogin()"><button class="eye-btn" onclick="togglePass('loginPass')">👁</button></div>
+    </div>
+    <button class="btn btn-primary btn-full" style="margin-bottom:16px;" onclick="doLogin()">⚡ Login</button>
+    <div class="flex-center"><span class="forgot-link" onclick="openForgot()">Forgot Password?</span></div>
+    <div class="divider"></div>
+    <div class="text-sm" style="text-align:center;color:var(--text3);">Secure Management Portal</div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div class="modal-overlay" id="forgotModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Password Recovery</div>
+      <button class="modal-close" onclick="closeModal('forgotModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="forgotStep1">
+        <div class="form-group"><label>Email Address</label><input type="email" id="forgotEmail" placeholder="Enter your email"></div>
+        <button class="btn btn-primary btn-full" onclick="forgotStep1()">Verify Email →</button>
+      </div>
+      <div id="forgotStep2" style="display:none">
+        <div class="form-group"><label id="secQLabel">Security Question</label><input type="text" id="forgotSecA" placeholder="Your answer"></div>
+        <button class="btn btn-primary btn-full" onclick="forgotStep2()">Verify Answer →</button>
+      </div>
+      <div id="forgotStep3" style="display:none">
+        <div class="form-group"><label>New Password</label>
+          <div class="input-eye"><input type="password" id="forgotNewPass" placeholder="New password"><button class="eye-btn" onclick="togglePass('forgotNewPass')">👁</button></div>
+        </div>
+        <div class="form-group"><label>Confirm Password</label>
+          <div class="input-eye"><input type="password" id="forgotConfPass" placeholder="Confirm password"><button class="eye-btn" onclick="togglePass('forgotConfPass')">👁</button></div>
+        </div>
+        <button class="btn btn-success btn-full" onclick="forgotStep3()">✓ Reset Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-ph" id="sidebarLogo">🏛️</div>
+      <div>
+        <div class="sidebar-title" id="sidebarOrgName">MSM KURUKA<br>UNIT</div>
+        <div class="sidebar-role" id="sidebarRole">Portal</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">SA</div>
+        <div><div class="user-name" id="userNameDisplay">Admin</div><div class="user-email" id="userEmailDisplay"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="29484d44404769445a44074a4644">[email&#160;protected]</a></div></div>
+      </div>
+      <button class="btn btn-danger btn-full btn-sm" onclick="doLogout()">⏻ Logout</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      </div>
+      <div class="topbar-actions">
+        <span style="font-size:12px;color:var(--text2);" id="topbarDate"></span>
+      </div>
+    </div>
+    <div class="page-content" id="pageContent"></div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<!-- Add/Edit Member -->
+<div class="modal-overlay" id="memberModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="memberModalTitle">👤 Add Member</div>
+      <button class="modal-close" onclick="closeModal('memberModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Full Name *</label><input type="text" id="mName" placeholder="Full name"></div>
+        <div class="form-group"><label>Mobile Number *</label><input type="tel" id="mMobile" placeholder="+91 XXXXXXXX"></div>
+        <div class="form-group"><label>Date of Birth *</label><input type="date" id="mDOB" onchange="calcAge()"></div>
+        <div class="form-group"><label>Age (Auto)</label><input type="text" id="mAge" readonly placeholder="Auto calculated" style="opacity:0.7;cursor:not-allowed"></div>
+        <div class="form-group"><label>Gender</label><select id="mGender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+        <div class="form-group"><label>School / College</label><input type="text" id="mSchool" placeholder="Institution name"></div>
+        <div class="form-group"><label>Address</label><input type="text" id="mAddress" placeholder="Full address"></div>
+        <div class="form-group"><label>Blood Group</label><select id="mBlood"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select></div>
+        <div class="form-group"><label>Join Date</label><input type="date" id="mJoinDate"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="mEmail" placeholder="email@example.com"></div>
+        <div class="form-group form-full"><label>Notes</label><textarea id="mNotes" rows="2" placeholder="Additional notes..."></textarea></div>
+      </div>
+      <input type="hidden" id="mEditId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('memberModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMember()">💾 Save Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Admin -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="adminModalTitle">🛡️ Add Admin</div>
+      <button class="modal-close" onclick="closeModal('adminModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Admin Name *</label><input type="text" id="aName" placeholder="Full name"></div>
+        <div class="form-group"><label>Mobile Number</label><input type="tel" id="aPhone" placeholder="+91 XXXXXXXX"></div>
+        <div class="form-group form-full"><label>Email Address *</label><input type="email" id="aEmail" placeholder="admin@example.com"></div>
+        <div class="form-group"><label>Password *</label>
+          <div class="input-eye"><input type="password" id="aPass" placeholder="Password"><button class="eye-btn" onclick="togglePass('aPass')">👁</button></div>
+        </div>
+        <div class="form-group"><label>Confirm Password *</label>
+          <div class="input-eye"><input type="password" id="aPassConf" placeholder="Confirm"><button class="eye-btn" onclick="togglePass('aPassConf')">👁</button></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="card-title" style="margin-bottom:16px;">🔐 Permissions</div>
+      <div class="perm-grid">
+        <div class="toggle-wrap"><div class="toggle" id="permViewMembers" onclick="togglePerm(this)"></div><span class="toggle-label">View Members</span></div>
+        <div class="toggle-wrap"><div class="toggle" id="permAddMembers" onclick="togglePerm(this)"></div><span class="toggle-label">Add Members</span></div>
+        <div class="toggle-wrap"><div class="toggle" id="permEditMembers" onclick="togglePerm(this)"></div><span class="toggle-label">Edit Members</span></div>
+        <div class="toggle-wrap"><div class="toggle" id="permViewFinance" onclick="togglePerm(this)"></div><span class="toggle-label">View Finance</span></div>
+        <div class="toggle-wrap"><div class="toggle" id="permAddFinance" onclick="togglePerm(this)"></div><span class="toggle-label">Add Finance Entries</span></div>
+      </div>
+      <div class="divider"></div>
+      <div class="card-title" style="margin-bottom:12px;">📁 Programme Access</div>
+      <div id="programPermissions" style="font-size:13px;color:var(--text2);">No programmes yet. Add programmes in Financial tab.</div>
+      <input type="hidden" id="aEditId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('adminModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAdmin()">💾 Save Admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Programme -->
+<div class="modal-overlay" id="progModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title" id="progModalTitle">📋 Add Programme</div>
+      <button class="modal-close" onclick="closeModal('progModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Programme Name *</label><input type="text" id="pName" placeholder="Programme name"></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="pDate"></div>
+      <div class="form-group"><label>Description</label><textarea id="pDesc" rows="2" placeholder="Description..."></textarea></div>
+      <input type="hidden" id="pEditId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('progModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProg()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Transaction -->
+<div class="modal-overlay" id="txnModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title" id="txnModalTitle">💳 Add Transaction</div>
+      <button class="modal-close" onclick="closeModal('txnModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Programme *</label>
+        <select id="txnProg" onchange="checkProgPerm()"><option value="">Select Programme</option></select>
+      </div>
+      <div id="txnNoPermMsg" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px;">⚠ You don't have permission for this programme.</div>
+      <div class="form-group"><label>Type *</label>
+        <div style="display:flex;gap:12px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;">
+            <input type="radio" name="txnType" value="credit" checked style="accent-color:var(--accent2)"> <span class="text-success">▲ Credit</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;">
+            <input type="radio" name="txnType" value="debit" style="accent-color:var(--danger)"> <span class="text-danger">▼ Debit</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Amount (₹) *</label><input type="number" id="txnAmount" placeholder="0.00" step="0.01"></div>
+        <div class="form-group"><label>Date *</label><input type="date" id="txnDate"></div>
+        <div class="form-group form-full"><label>Transaction Details *</label><input type="text" id="txnDetails" placeholder="Description of transaction"></div>
+        <div class="form-group form-full"><label>Payment Method *</label>
+          <select id="txnMethod">
+            <option value="Cash">💵 Cash</option>
+            <option value="UPI">📱 UPI</option>
+            <option value="Bank Transfer">🏦 Bank Transfer</option>
+            <option value="Cheque">📋 Cheque</option>
+            <option value="Card">💳 Card</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group form-full"><label>Reference / Note</label><input type="text" id="txnRef" placeholder="Transaction ID, cheque no., etc."></div>
+      </div>
+      <input type="hidden" id="txnEditId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('txnModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTxn()">💾 Save Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header">
+      <div class="modal-title">⚠ Confirm Delete</div>
+      <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;padding:16px 0;">
+        <div style="font-size:48px;margin-bottom:16px;">🗑️</div>
+        <div id="deleteMsg" style="font-size:15px;color:var(--text2);">Are you sure you want to delete the selected item(s)?</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Logo Upload for Settings -->
+<div class="modal-overlay" id="logoModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">🖼 Update Logo</div>
+      <button class="modal-close" onclick="closeModal('logoModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="logo-upload-area" style="margin-bottom:20px;">
+        <div class="current-logo-ph" id="logoModalPreview">🏛️</div>
+        <div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:8px;">Current Logo</div>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('logoModalInput').click()">📁 Choose File</button>
+          <input type="file" id="logoModalInput" accept="image/*" style="display:none" onchange="previewLogoModal(this)">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('logoModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLogoModal()">💾 Save Logo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA LAYER - Firebase (window.DB set by module above)
+// DB.get(k)      → sync, returns cached value
+// DB.set(k,v)    → async, writes to Firestore + cache
+// DB.del(k)      → async, deletes from Firestore + cache
+// All existing code using DB.get() works unchanged.
+// DB.set() / DB.del() fire-and-forget (no await needed).
+// ============================================================
+// Proxy so DB.set/del work without await throughout legacy code:
+const DB = new Proxy({}, {
+  get(_, prop) {
+    if (!window.DB) return () => {};
+    return window.DB[prop].bind(window.DB);
+  }
+});
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg, type='info') {
+  const t = document.getElementById('toast');
+  const icons = {info:'ℹ️',success:'✅',error:'❌',warning:'⚠️'};
+  document.getElementById('toastIcon').textContent = icons[type]||'ℹ️';
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = 'show '+type;
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.className='',3000);
+}
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function togglePass(id) {
+  const el = document.getElementById(id);
+  el.type = el.type==='password'?'text':'password';
+}
+
+// ============================================================
+// LOGO HELPERS
+// ============================================================
+let setupLogoData = null;
+let logoModalData = null;
+
+function previewLogo(input) {
+  if(!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    setupLogoData = e.target.result;
+    const el = document.getElementById('setupLogoPreview');
+    el.innerHTML = `<img src="${setupLogoData}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function previewLogoModal(input) {
+  if(!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    logoModalData = e.target.result;
+    const el = document.getElementById('logoModalPreview');
+    el.innerHTML = `<img src="${logoModalData}" class="current-logo">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function saveLogoModal() {
+  if(!logoModalData) { toast('Please select an image','warning'); return; }
+  DB.set('logo', logoModalData);
+  updateLogos();
+  toast('Logo updated','success');
+  closeModal('logoModal');
+}
+
+function updateLogos() {
+  const logo = DB.get('logo');
+  const orgName = DB.get('superadmin')?.orgName || 'MSM KURUKA UNIT';
+  ['loginLogoImg','sidebarLogo'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(logo) el.innerHTML = `<img src="${logo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    else el.textContent = '🏛️';
+  });
+  const loginOn = document.getElementById('loginOrgName');
+  if(loginOn) loginOn.textContent = orgName;
+  const sOn = document.getElementById('sidebarOrgName');
+  if(sOn) { const parts = orgName.split(' '); sOn.innerHTML = parts.join(' '); }
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+let currentStep = 1;
+function nextStep() {
+  currentStep++;
+  document.querySelectorAll('.setup-step').forEach(s=>s.classList.remove('active'));
+  const s = document.getElementById('step'+currentStep);
+  if(s) s.classList.add('active');
+}
+
+function completeSetup() {
+  const name = document.getElementById('setupAdminName').value.trim();
+  const phone = document.getElementById('setupAdminPhone').value.trim();
+  const email = document.getElementById('setupAdminEmail').value.trim();
+  const pass = document.getElementById('setupAdminPass').value;
+  const secQ = document.getElementById('setupSecQ').value;
+  const secA = document.getElementById('setupSecA').value.trim();
+  const orgName = document.getElementById('setupOrgName').value.trim() || 'MSM KURUKA UNIT';
+  if(!name||!phone||!email||!pass||!secQ||!secA) { toast('Please fill all required fields','error'); return; }
+  if(pass.length < 6) { toast('Password must be at least 6 characters','error'); return; }
+  const sa = { name, phone, email, pass, secQ, secA, orgName, role:'superadmin', createdAt:new Date().toISOString() };
+  DB.set('superadmin', sa);
+  if(setupLogoData) DB.set('logo', setupLogoData);
+  DB.set('programs', []);
+  DB.set('transactions', []);
+  DB.set('members', []);
+  DB.set('admins', []);
+  toast('Account created successfully!','success');
+  setTimeout(()=>{ document.getElementById('setupPage').style.display='none'; showLoginPage(); }, 1000);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+let currentUser = null;
+
+function showLoginPage() {
+  document.getElementById('loginPage').style.display='flex';
+  updateLogos();
+}
+
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if(!email||!pass) { toast('Please enter email and password','warning'); return; }
+  const sa = DB.get('superadmin');
+  if(sa && sa.email.toLowerCase()===email.toLowerCase() && sa.pass===pass) {
+    currentUser = { ...sa, role:'superadmin' };
+    document.getElementById('loginPage').style.display='none';
+    launchApp();
+    return;
+  }
+  const admins = DB.get('admins') || [];
+  const adm = admins.find(a=>a.email.toLowerCase()===email.toLowerCase() && a.pass===pass);
+  if(adm) {
+    currentUser = { ...adm, role:'admin' };
+    document.getElementById('loginPage').style.display='none';
+    launchApp();
+    return;
+  }
+  toast('Invalid email or password','error');
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginPage').style.display='flex';
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPass').value='';
+}
+
+// ============================================================
+// FORGOT PASSWORD
+// ============================================================
+let forgotUser = null;
+function openForgot() { forgotUser=null; document.getElementById('forgotStep1').style.display='block'; document.getElementById('forgotStep2').style.display='none'; document.getElementById('forgotStep3').style.display='none'; document.getElementById('forgotEmail').value=''; openModal('forgotModal'); }
+
+function forgotStep1() {
+  const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+  const sa = DB.get('superadmin');
+  if(sa && sa.email.toLowerCase()===email) { forgotUser={...sa,role:'superadmin'}; }
+  else {
+    const admins = DB.get('admins')||[];
+    const adm = admins.find(a=>a.email.toLowerCase()===email);
+    if(adm) forgotUser={...adm,role:'admin',isAdmin:true};
+  }
+  if(!forgotUser) { toast('Email not found','error'); return; }
+  if(forgotUser.role==='admin') {
+    // Admin: show super admin contact
+    const sa2 = DB.get('superadmin');
+    document.getElementById('forgotStep1').style.display='none';
+    document.getElementById('forgotStep2').innerHTML=`<div style="text-align:center;padding:16px;"><div style="font-size:40px;margin-bottom:12px;">📞</div><div style="color:var(--text2);font-size:14px;">Please contact Super Admin to reset your password.</div><div style="color:var(--accent);font-size:18px;margin-top:12px;font-weight:700;">${sa2?maskPhone(sa2.phone):''}</div><div style="color:var(--text3);font-size:12px;margin-top:4px;">${sa2?sa2.email:''}</div></div>`;
+    document.getElementById('forgotStep2').style.display='block';
+    return;
+  }
+  const questions = {mother:"What is your mother's maiden name?",city:"What city were you born in?",pet:"What was your first pet's name?",school:"What school did you first attend?"};
+  document.getElementById('secQLabel').textContent = questions[forgotUser.secQ] || 'Security Question';
+  document.getElementById('forgotStep1').style.display='none';
+  document.getElementById('forgotStep2').style.display='block';
+}
+function maskPhone(p) { if(!p) return ''; return p.slice(0,-4).replace(/./g,'*')+p.slice(-4); }
+function forgotStep2() {
+  const ans = document.getElementById('forgotSecA').value.trim().toLowerCase();
+  if(ans!==forgotUser.secA.toLowerCase()) { toast('Incorrect answer','error'); return; }
+  document.getElementById('forgotStep2').style.display='none';
+  document.getElementById('forgotStep3').style.display='block';
+}
+function forgotStep3() {
+  const np = document.getElementById('forgotNewPass').value;
+  const cp = document.getElementById('forgotConfPass').value;
+  if(!np||np.length<6) { toast('Password must be at least 6 characters','error'); return; }
+  if(np!==cp) { toast('Passwords do not match','error'); return; }
+  const sa = DB.get('superadmin');
+  sa.pass = np;
+  DB.set('superadmin', sa);
+  toast('Password reset successfully!','success');
+  closeModal('forgotModal');
+}
+
+// ============================================================
+// APP LAUNCH
+// ============================================================
+function launchApp() {
+  document.getElementById('app').style.display='block';
+  updateLogos();
+  const sa = DB.get('superadmin');
+  const orgName = sa?.orgName || 'MSM KURUKA UNIT';
+  document.getElementById('sidebarOrgName').textContent = orgName;
+  document.getElementById('sidebarRole').textContent = currentUser.role==='superadmin'?'Super Administrator':'Administrator';
+  const initials = currentUser.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userNameDisplay').textContent = currentUser.name;
+  document.getElementById('userEmailDisplay').textContent = currentUser.email;
+  document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  buildNav();
+  if(currentUser.role==='superadmin') showPage('members');
+  else showPage('viewMembers');
+}
+
+function buildNav() {
+  const nav = document.getElementById('sidebarNav');
+  if(currentUser.role==='superadmin') {
+    nav.innerHTML = `
+      <div class="nav-section">Management</div>
+      <div class="nav-item" data-page="members" onclick="showPage('members')"><span class="nav-icon">👥</span> Members</div>
+      <div class="nav-item" data-page="admins" onclick="showPage('admins')"><span class="nav-icon">🛡️</span> Admin Accounts</div>
+      <div class="nav-item" data-page="finance" onclick="showPage('finance')"><span class="nav-icon">💰</span> Financial Book</div>
+      <div class="nav-section">System</div>
+      <div class="nav-item" data-page="settings" onclick="showPage('settings')"><span class="nav-icon">⚙️</span> Settings</div>
+    `;
+  } else {
+    const perms = currentUser.permissions || {};
+    let html = '<div class="nav-section">Portal</div>';
+    if(perms.viewMembers||perms.addMembers) html += `<div class="nav-item" data-page="viewMembers" onclick="showPage('viewMembers')"><span class="nav-icon">👥</span> Members</div>`;
+    if(perms.viewFinance||perms.addFinance) html += `<div class="nav-item" data-page="adminFinance" onclick="showPage('adminFinance')"><span class="nav-icon">💰</span> Finance</div>`;
+    nav.innerHTML = html;
+  }
+}
+
+function showPage(page) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const active = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if(active) active.classList.add('active');
+  document.getElementById('topbarTitle').textContent = {
+    members:'Member Management', admins:'Admin Accounts', finance:'Financial Book',
+    viewMembers:'Member Directory', adminFinance:'Finance', settings:'Settings'
+  }[page]||page;
+  const pages = { members:renderMembersPage, admins:renderAdminsPage, finance:renderFinancePage,
+    viewMembers:renderViewMembersPage, adminFinance:renderAdminFinancePage, settings:renderSettingsPage };
+  if(pages[page]) pages[page]();
+  closeSidebar();
+}
+
+// ============================================================
+// MEMBER PAGE
+// ============================================================
+let memberSearch = '';
+let memberSelected = [];
+
+function renderMembersPage() {
+  const members = DB.get('members') || [];
+  const filtered = members.filter(m => !memberSearch || [m.name,m.mobile,m.school,m.address].join(' ').toLowerCase().includes(memberSearch.toLowerCase()));
+  document.getElementById('pageContent').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card cyan"><div class="stat-label">Total Members</div><div class="stat-value">${members.length}</div><div class="stat-icon">👥</div></div>
+      <div class="stat-card green"><div class="stat-label">This Month</div><div class="stat-value">${members.filter(m=>m.joinDate&&m.joinDate.startsWith(new Date().toISOString().slice(0,7))).length}</div><div class="stat-icon">📅</div></div>
+      <div class="stat-card orange"><div class="stat-label">Male</div><div class="stat-value">${members.filter(m=>m.gender==='Male').length}</div><div class="stat-icon">♂</div></div>
+      <div class="stat-card red"><div class="stat-label">Female</div><div class="stat-value">${members.filter(m=>m.gender==='Female').length}</div><div class="stat-icon">♀</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">👥 All Members</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-success btn-sm" onclick="openAddMember()">＋ Add Member</button>
+          <button class="btn btn-outline btn-sm" onclick="importMembersExcel()">📥 Import Excel</button>
+          <button class="btn btn-outline btn-sm" onclick="exportMembersExcel()">📤 Export Excel</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSelectedMembers()">🗑 Delete Selected</button>
+        </div>
+      </div>
+      <div class="table-controls">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search members..." value="${memberSearch}" oninput="memberSearch=this.value;renderMembersPage()"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th class="checkbox-cell"><input type="checkbox" id="selectAllMembers" onchange="selectAllMembersToggle(this)"></th>
+            <th>#</th><th>Name</th><th>Mobile</th><th>DOB</th><th>Age</th><th>Gender</th><th>School/College</th><th>Blood</th><th>Join Date</th><th>Actions</th>
+          </tr></thead>
+          <tbody>${filtered.length===0?`<tr><td colspan="11"><div class="no-data">No members found. Add your first member!</div></td></tr>`
+            :filtered.map((m,i)=>`
+            <tr>
+              <td><input type="checkbox" class="member-cb" value="${m.id}" ${memberSelected.includes(m.id)?'checked':''}  onchange="toggleMemberSelect(this)"></td>
+              <td>${i+1}</td>
+              <td><b>${m.name}</b>${m.email?`<br><span style="font-size:11px;color:var(--text3)">${m.email}</span>`:''}</td>
+              <td>${m.mobile}</td>
+              <td>${m.dob||'-'}</td>
+              <td>${m.dob?calcAgeFrom(m.dob):'-'}</td>
+              <td>${m.gender?`<span class="badge badge-cyan">${m.gender}</span>`:'-'}</td>
+              <td>${m.school||'-'}</td>
+              <td>${m.blood?`<span class="badge badge-orange">${m.blood}</span>`:'-'}</td>
+              <td>${m.joinDate||'-'}</td>
+              <td><div class="table-actions">
+                <button class="btn btn-outline btn-icon btn-sm" onclick="editMember('${m.id}')" title="Edit">✏️</button>
+                <button class="btn btn-danger btn-icon btn-sm" onclick="confirmDeleteMember('${m.id}')" title="Delete">🗑</button>
+              </div></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2);">Showing ${filtered.length} of ${members.length} members${memberSelected.length>0?` · ${memberSelected.length} selected`:''}</div>
+    </div>
+  `;
+}
+
+function selectAllMembersToggle(cb) {
+  const cbs = document.querySelectorAll('.member-cb');
+  memberSelected = cb.checked ? Array.from(cbs).map(c=>c.value) : [];
+  cbs.forEach(c=>c.checked=cb.checked);
+}
+function toggleMemberSelect(cb) {
+  if(cb.checked) memberSelected.push(cb.value);
+  else memberSelected = memberSelected.filter(id=>id!==cb.value);
+}
+
+function openAddMember() {
+  document.getElementById('memberModalTitle').textContent='👤 Add Member';
+  ['mName','mMobile','mDOB','mAge','mAddress','mNotes','mEmail'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mGender').value='';
+  document.getElementById('mSchool').value='';
+  document.getElementById('mBlood').value='';
+  document.getElementById('mJoinDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('mEditId').value='';
+  openModal('memberModal');
+}
+
+function editMember(id) {
+  const members = DB.get('members')||[];
+  const m = members.find(x=>x.id===id);
+  if(!m) return;
+  document.getElementById('memberModalTitle').textContent='✏️ Edit Member';
+  document.getElementById('mName').value=m.name||'';
+  document.getElementById('mMobile').value=m.mobile||'';
+  document.getElementById('mDOB').value=m.dob||'';
+  document.getElementById('mAge').value=m.dob?calcAgeFrom(m.dob):'';
+  document.getElementById('mGender').value=m.gender||'';
+  document.getElementById('mSchool').value=m.school||'';
+  document.getElementById('mAddress').value=m.address||'';
+  document.getElementById('mBlood').value=m.blood||'';
+  document.getElementById('mJoinDate').value=m.joinDate||'';
+  document.getElementById('mEmail').value=m.email||'';
+  document.getElementById('mNotes').value=m.notes||'';
+  document.getElementById('mEditId').value=id;
+  openModal('memberModal');
+}
+
+function saveMember() {
+  const name = document.getElementById('mName').value.trim();
+  const mobile = document.getElementById('mMobile').value.trim();
+  const dob = document.getElementById('mDOB').value;
+  if(!name||!mobile||!dob) { toast('Name, Mobile and DOB are required','error'); return; }
+  const members = DB.get('members')||[];
+  const editId = document.getElementById('mEditId').value;
+  const data = {
+    id: editId || 'M'+Date.now(),
+    name, mobile, dob, age:calcAgeFrom(dob),
+    gender:document.getElementById('mGender').value,
+    school:document.getElementById('mSchool').value.trim(),
+    address:document.getElementById('mAddress').value.trim(),
+    blood:document.getElementById('mBlood').value,
+    joinDate:document.getElementById('mJoinDate').value,
+    email:document.getElementById('mEmail').value.trim(),
+    notes:document.getElementById('mNotes').value.trim(),
+    addedBy:currentUser.email, updatedAt:new Date().toISOString()
+  };
+  if(editId) { const idx=members.findIndex(m=>m.id===editId); members[idx]=data; toast('Member updated','success'); }
+  else { members.push(data); toast('Member added','success'); }
+  DB.set('members',members);
+  closeModal('memberModal');
+  renderMembersPage();
+}
+
+function confirmDeleteMember(id) {
+  document.getElementById('deleteMsg').textContent='Delete this member? This action cannot be undone.';
+  document.getElementById('deleteConfirmBtn').onclick=()=>{ deleteMember(id); closeModal('deleteModal'); };
+  openModal('deleteModal');
+}
+
+function deleteMember(id) {
+  const members = (DB.get('members')||[]).filter(m=>m.id!==id);
+  DB.set('members',members);
+  memberSelected=memberSelected.filter(x=>x!==id);
+  toast('Member deleted','success');
+  renderMembersPage();
+}
+
+function deleteSelectedMembers() {
+  if(!memberSelected.length) { toast('Select members to delete','warning'); return; }
+  document.getElementById('deleteMsg').textContent=`Delete ${memberSelected.length} selected member(s)? This cannot be undone.`;
+  document.getElementById('deleteConfirmBtn').onclick=()=>{
+    let members=(DB.get('members')||[]).filter(m=>!memberSelected.includes(m.id));
+    DB.set('members',members); memberSelected=[]; toast('Deleted selected members','success'); closeModal('deleteModal'); renderMembersPage();
+  };
+  openModal('deleteModal');
+}
+
+function calcAge() {
+  const dob = document.getElementById('mDOB').value;
+  document.getElementById('mAge').value = dob ? calcAgeFrom(dob) : '';
+}
+function calcAgeFrom(dob) {
+  const b=new Date(dob), n=new Date();
+  let age=n.getFullYear()-b.getFullYear();
+  if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate())) age--;
+  return age;
+}
+
+function exportMembersExcel() {
+  const members = DB.get('members')||[];
+  if(!members.length) { toast('No members to export','warning'); return; }
+  const rows = members.map((m,i)=>({
+    '#':i+1,'Name':m.name,'Mobile':m.mobile,'DOB':m.dob,'Age':m.age||calcAgeFrom(m.dob),
+    'Gender':m.gender||'','School/College':m.school||'','Blood Group':m.blood||'',
+    'Address':m.address||'','Email':m.email||'','Join Date':m.joinDate||''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Members');
+  XLSX.writeFile(wb,'MSM_Members_'+new Date().toISOString().split('T')[0]+'.xlsx');
+  toast('Members exported to Excel','success');
+}
+
+function importMembersExcel() {
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls';
+  inp.onchange = e => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(ev.target.result,{type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+        const members = DB.get('members')||[];
+        let added=0;
+        rows.forEach(r=>{
+          if(!r['Name']||!r['Mobile']) return;
+          members.push({
+            id:'M'+Date.now()+Math.random(),
+            name:String(r['Name']||''), mobile:String(r['Mobile']||''),
+            dob:r['DOB']?String(r['DOB']):'', gender:r['Gender']||'',
+            school:r['School/College']||'', blood:r['Blood Group']||'',
+            address:r['Address']||'', email:r['Email']||'', joinDate:r['Join Date']||'',
+            addedBy:currentUser.email, updatedAt:new Date().toISOString()
+          });
+          added++;
+        });
+        DB.set('members',members);
+        toast(`Imported ${added} members`,'success');
+        renderMembersPage();
+      } catch(err) { toast('Error reading file','error'); }
+    };
+    reader.readAsBinaryString(file);
+  };
+  inp.click();
+}
+
+// ============================================================
+// VIEW MEMBERS PAGE (Admin)
+// ============================================================
+let vmSearch='';
+function renderViewMembersPage() {
+  const perms = currentUser.permissions||{};
+  const members = DB.get('members')||[];
+  const filtered = members.filter(m=>!vmSearch||[m.name,m.mobile,m.school].join(' ').toLowerCase().includes(vmSearch.toLowerCase()));
+  document.getElementById('pageContent').innerHTML=`
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">👥 Member Directory</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${perms.addMembers?'<button class="btn btn-success btn-sm" onclick="openAddMemberAdmin()">＋ Add Member</button>':''}
+          <button class="btn btn-outline btn-sm" onclick="exportMembersExcelAdmin()">📤 Export Excel</button>
+        </div>
+      </div>
+      <div class="table-controls">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search..." value="${vmSearch}" oninput="vmSearch=this.value;renderViewMembersPage()"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Mobile</th><th>DOB</th><th>Age</th><th>Gender</th><th>School/College</th><th>Blood</th>${perms.editMembers?'<th>Actions</th>':''}</tr></thead>
+          <tbody>${filtered.length===0?`<tr><td colspan="9"><div class="no-data">No members found.</div></td></tr>`
+            :filtered.map((m,i)=>`<tr><td>${i+1}</td><td><b>${m.name}</b></td><td>${m.mobile}</td><td>${m.dob||'-'}</td><td>${m.dob?calcAgeFrom(m.dob):'-'}</td><td>${m.gender||'-'}</td><td>${m.school||'-'}</td><td>${m.blood||'-'}</td>${perms.editMembers?`<td><button class="btn btn-outline btn-icon btn-sm" onclick="editMemberAdmin('${m.id}')">✏️</button></td>`:''}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+function openAddMemberAdmin() { openAddMember(); }
+function editMemberAdmin(id) { editMember(id); }
+function exportMembersExcelAdmin() { exportMembersExcel(); }
+
+// ============================================================
+// ADMINS PAGE
+// ============================================================
+let adminSearch='';
+function renderAdminsPage() {
+  const admins = DB.get('admins')||[];
+  const filtered = admins.filter(a=>!adminSearch||[a.name,a.email].join(' ').toLowerCase().includes(adminSearch.toLowerCase()));
+  document.getElementById('pageContent').innerHTML=`
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🛡️ Admin Accounts</div>
+        <button class="btn btn-success btn-sm" onclick="openAddAdmin()">＋ Create Admin</button>
+      </div>
+      <div class="table-controls">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search admins..." value="${adminSearch}" oninput="adminSearch=this.value;renderAdminsPage()"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Name</th><th>Email</th><th>Mobile</th><th>Permissions</th><th>Actions</th>
+          </tr></thead>
+          <tbody>${filtered.length===0?`<tr><td colspan="6"><div class="no-data">No admins created yet.</div></td></tr>`
+            :filtered.map((a,i)=>`<tr>
+              <td>${i+1}</td>
+              <td><b>${a.name}</b></td>
+              <td>${a.email}</td>
+              <td>${a.phone||'-'}</td>
+              <td>${renderPermBadges(a.permissions||{})}</td>
+              <td><div class="table-actions">
+                <button class="btn btn-outline btn-icon btn-sm" onclick="editAdminModal('${a.id}')" title="Edit">✏️</button>
+                <button class="btn btn-danger btn-icon btn-sm" onclick="confirmDeleteAdmin('${a.id}')" title="Delete">🗑</button>
+              </div></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderPermBadges(p) {
+  const map={viewMembers:'View Members',addMembers:'Add Members',editMembers:'Edit Members',viewFinance:'View Finance',addFinance:'Add Finance'};
+  return Object.entries(map).filter(([k])=>p[k]).map(([,v])=>`<span class="badge badge-cyan" style="margin:2px;font-size:10px;">${v}</span>`).join('')||'<span class="badge badge-red">No Permissions</span>';
+}
+
+function openAddAdmin() {
+  document.getElementById('adminModalTitle').textContent='🛡️ Add Admin';
+  ['aName','aPhone','aEmail','aPass','aPassConf'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aEditId').value='';
+  ['permViewMembers','permAddMembers','permEditMembers','permViewFinance','permAddFinance'].forEach(id=>{
+    document.getElementById(id).className='toggle';
+  });
+  renderProgPerms(null);
+  openModal('adminModal');
+}
+
+function editAdminModal(id) {
+  const admins=DB.get('admins')||[];
+  const a=admins.find(x=>x.id===id);
+  if(!a) return;
+  document.getElementById('adminModalTitle').textContent='✏️ Edit Admin';
+  document.getElementById('aName').value=a.name||'';
+  document.getElementById('aPhone').value=a.phone||'';
+  document.getElementById('aEmail').value=a.email||'';
+  document.getElementById('aPass').value=a.pass||'';
+  document.getElementById('aPassConf').value=a.pass||'';
+  document.getElementById('aEditId').value=id;
+  const p=a.permissions||{};
+  ['permViewMembers','permAddMembers','permEditMembers','permViewFinance','permAddFinance'].forEach(pid=>{
+    const pKey=pid.replace('perm','').replace(/^./,c=>c.toLowerCase());
+    const el=document.getElementById(pid);
+    el.className='toggle'+(p[pKey]?' on':'');
+  });
+  renderProgPerms(a.progPerms||[]);
+  openModal('adminModal');
+}
+
+function renderProgPerms(selected) {
+  const progs=DB.get('programs')||[];
+  const cont=document.getElementById('programPermissions');
+  if(!progs.length) { cont.innerHTML='<div style="font-size:13px;color:var(--text2);">No programmes yet.</div>'; return; }
+  cont.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${progs.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2);">
+      <input type="checkbox" class="prog-perm-cb" value="${p.id}" ${!selected||selected.includes(p.id)?'checked':''}> ${p.name}
+    </label>`).join('')}</div>`;
+}
+
+function togglePerm(el) { el.classList.toggle('on'); }
+
+function saveAdmin() {
+  const name=document.getElementById('aName').value.trim();
+  const email=document.getElementById('aEmail').value.trim();
+  const pass=document.getElementById('aPass').value;
+  const passConf=document.getElementById('aPassConf').value;
+  const phone=document.getElementById('aPhone').value.trim();
+  if(!name||!email||!pass) { toast('Name, Email and Password are required','error'); return; }
+  if(pass!==passConf) { toast('Passwords do not match','error'); return; }
+  const editId=document.getElementById('aEditId').value;
+  const permissions={
+    viewMembers:document.getElementById('permViewMembers').classList.contains('on'),
+    addMembers:document.getElementById('permAddMembers').classList.contains('on'),
+    editMembers:document.getElementById('permEditMembers').classList.contains('on'),
+    viewFinance:document.getElementById('permViewFinance').classList.contains('on'),
+    addFinance:document.getElementById('permAddFinance').classList.contains('on'),
+  };
+  const progPerms=Array.from(document.querySelectorAll('.prog-perm-cb')).filter(c=>c.checked).map(c=>c.value);
+  const admins=DB.get('admins')||[];
+  const data={id:editId||'A'+Date.now(),name,email,pass,phone,permissions,progPerms,createdAt:new Date().toISOString()};
+  if(editId) { const idx=admins.findIndex(a=>a.id===editId); admins[idx]=data; toast('Admin updated','success'); }
+  else { admins.push(data); toast('Admin created','success'); }
+  DB.set('admins',admins);
+  closeModal('adminModal');
+  renderAdminsPage();
+}
+
+function confirmDeleteAdmin(id) {
+  document.getElementById('deleteMsg').textContent='Delete this admin account? This cannot be undone.';
+  document.getElementById('deleteConfirmBtn').onclick=()=>{
+    DB.set('admins',(DB.get('admins')||[]).filter(a=>a.id!==id));
+    toast('Admin deleted','success'); closeModal('deleteModal'); renderAdminsPage();
+  };
+  openModal('deleteModal');
+}
+
+// ============================================================
+// FINANCE PAGE
+// ============================================================
+let financeYear = new Date().getFullYear();
+let financeSearch = '';
+
+function renderFinancePage(isAdmin) {
+  const progs=DB.get('programs')||[];
+  const txns=DB.get('transactions')||[];
+  const years=[...new Set(progs.map(p=>p.date?p.date.slice(0,4):String(new Date().getFullYear())))].sort().reverse();
+  if(!years.includes(String(financeYear))) financeYear=Number(years[0]||new Date().getFullYear());
+
+  const yearProgs=progs.filter(p=>p.date&&p.date.startsWith(String(financeYear)));
+  let totalCredit=0, totalDebit=0;
+  yearProgs.forEach(p=>{ const t=txns.filter(x=>x.programId===p.id); t.forEach(x=>{ if(x.type==='credit')totalCredit+=x.amount; else totalDebit+=x.amount; }); });
+  const balance=totalCredit-totalDebit;
+
+  const canAdd = !isAdmin || (currentUser.permissions||{}).addFinance;
+  document.getElementById('pageContent').innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="stat-label">Total Credit</div><div class="stat-value">₹${totalCredit.toLocaleString('en-IN')}</div><div class="stat-icon">▲</div></div>
+      <div class="stat-card red"><div class="stat-label">Total Debit</div><div class="stat-value">₹${totalDebit.toLocaleString('en-IN')}</div><div class="stat-icon">▼</div></div>
+      <div class="stat-card ${balance>=0?'cyan':'orange'}"><div class="stat-label">Balance</div><div class="stat-value">₹${Math.abs(balance).toLocaleString('en-IN')}</div><div class="stat-icon">${balance>=0?'✓':'!'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Programmes & Transactions</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <div class="year-filter">
+            <span style="font-size:12px;color:var(--text2);">Year:</span>
+            <select onchange="financeYear=Number(this.value);${isAdmin?'renderAdminFinancePage':'renderFinancePage'}()">
+              ${years.map(y=>`<option value="${y}" ${y==financeYear?'selected':''}>${y}</option>`).join('')}
+              <option value="${new Date().getFullYear()}" ${!years.length||years[0]==new Date().getFullYear()?'selected':''}>All</option>
+            </select>
+          </div>
+          ${canAdd?`<button class="btn btn-success btn-sm" onclick="openAddProg()">＋ Programme</button>`:''}
+          ${canAdd?`<button class="btn btn-primary btn-sm" onclick="openAddTxn()">＋ Transaction</button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="exportFinanceExcel()">📤 Export</button>
+        </div>
+      </div>
+      <div class="table-controls">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search programmes..." oninput="financeSearch=this.value;${isAdmin?'renderAdminFinancePage':'renderFinancePage'}()"></div>
+      </div>
+      <div id="progList">
+        ${yearProgs.filter(p=>!financeSearch||p.name.toLowerCase().includes(financeSearch.toLowerCase())).length===0
+          ?'<div class="no-data">No programmes for '+financeYear+'. Add a new programme!</div>'
+          :yearProgs.filter(p=>!financeSearch||p.name.toLowerCase().includes(financeSearch.toLowerCase())).map(p=>{
+            const pt=txns.filter(t=>t.programId===p.id);
+            const pCredit=pt.filter(t=>t.type==='credit').reduce((a,b)=>a+b.amount,0);
+            const pDebit=pt.filter(t=>t.type==='debit').reduce((a,b)=>a+b.amount,0);
+            const pBal=pCredit-pDebit;
+            return `
+            <div class="prog-item">
+              <div class="prog-header" onclick="toggleProg('prog_${p.id}')">
+                <div>
+                  <div class="prog-name">${p.name}</div>
+                  <div class="prog-date" style="font-size:11px;margin-top:2px;">${p.date||''} ${p.desc?'· '+p.desc:''}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div class="prog-totals">
+                    <span class="badge badge-green">▲ ₹${pCredit.toLocaleString('en-IN')}</span>
+                    <span class="badge badge-red">▼ ₹${pDebit.toLocaleString('en-IN')}</span>
+                    <span class="badge ${pBal>=0?'badge-cyan':'badge-orange'}">= ₹${Math.abs(pBal).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style="display:flex;gap:6px;">
+                    ${canAdd?`<button class="btn btn-outline btn-icon btn-sm" onclick="event.stopPropagation();openEditProg('${p.id}')" title="Edit">✏️</button>`:''}
+                    ${canAdd?`<button class="btn btn-danger btn-icon btn-sm" onclick="event.stopPropagation();confirmDeleteProg('${p.id}')" title="Delete">🗑</button>`:''}
+                  </div>
+                  <div class="prog-arrow" id="arrow_${p.id}">▼</div>
+                </div>
+              </div>
+              <div class="prog-body" id="prog_${p.id}">
+                <table>
+                  <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Details</th><th>Method</th><th>Ref</th><th>Amount</th>${canAdd?'<th>Action</th>':''}</tr></thead>
+                  <tbody>
+                    ${pt.length===0?`<tr><td colspan="${canAdd?8:7}"><div class="no-data" style="padding:16px;">No transactions yet.</div></td></tr>`:
+                    pt.map((t,i)=>`<tr>
+                      <td>${i+1}</td><td>${t.date||'-'}</td>
+                      <td><span class="badge ${t.type==='credit'?'badge-green':'badge-red'}">${t.type==='credit'?'▲ Credit':'▼ Debit'}</span></td>
+                      <td>${t.details||'-'}</td><td>${t.method||'-'}</td><td style="font-size:12px;color:var(--text2)">${t.ref||'-'}</td>
+                      <td><b class="${t.type==='credit'?'text-success':'text-danger'}">₹${t.amount.toLocaleString('en-IN')}</b></td>
+                      ${canAdd?`<td><div class="table-actions">
+                        <button class="btn btn-outline btn-icon btn-sm" onclick="editTxn('${t.id}')" title="Edit">✏️</button>
+                        <button class="btn btn-danger btn-icon btn-sm" onclick="confirmDeleteTxn('${t.id}')" title="Delete">🗑</button>
+                      </div></td>`:''}
+                    </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>`; }).join('')}
+      </div>
+    </div>`;
+}
+
+function toggleProg(id) {
+  const body=document.getElementById(id);
+  const arrow=document.getElementById('arrow_'+id.replace('prog_',''));
+  if(!body) return;
+  const open=body.classList.toggle('open');
+  if(arrow) arrow.textContent=open?'▲':'▼';
+}
+
+function renderAdminFinancePage() {
+  const perms=currentUser.permissions||{};
+  if(!perms.viewFinance&&!perms.addFinance) {
+    document.getElementById('pageContent').innerHTML='<div class="card"><div class="no-data" style="padding:48px;">⚠ You do not have permission to view finances.</div></div>';
+    return;
+  }
+  renderFinancePage(true);
+}
+
+// PROGRAMME CRUD
+function openAddProg() {
+  document.getElementById('progModalTitle').textContent='📋 Add Programme';
+  document.getElementById('pName').value=''; document.getElementById('pDate').value=new Date().toISOString().split('T')[0]; document.getElementById('pDesc').value=''; document.getElementById('pEditId').value='';
+  openModal('progModal');
+}
+function openEditProg(id) {
+  const p=(DB.get('programs')||[]).find(x=>x.id===id); if(!p) return;
+  document.getElementById('progModalTitle').textContent='✏️ Edit Programme';
+  document.getElementById('pName').value=p.name||''; document.getElementById('pDate').value=p.date||''; document.getElementById('pDesc').value=p.desc||''; document.getElementById('pEditId').value=id;
+  openModal('progModal');
+}
+function saveProg() {
+  const name=document.getElementById('pName').value.trim(), date=document.getElementById('pDate').value, desc=document.getElementById('pDesc').value.trim();
+  if(!name||!date) { toast('Name and Date required','error'); return; }
+  const progs=DB.get('programs')||[], editId=document.getElementById('pEditId').value;
+  const data={id:editId||'P'+Date.now(),name,date,desc};
+  if(editId) { progs[progs.findIndex(p=>p.id===editId)]=data; toast('Programme updated','success'); }
+  else { progs.push(data); toast('Programme added','success'); }
+  DB.set('programs',progs); closeModal('progModal');
+  if(currentUser.role==='superadmin') renderFinancePage(); else renderAdminFinancePage();
+}
+function confirmDeleteProg(id) {
+  document.getElementById('deleteMsg').textContent='Delete this programme and ALL its transactions? This cannot be undone.';
+  document.getElementById('deleteConfirmBtn').onclick=()=>{
+    DB.set('programs',(DB.get('programs')||[]).filter(p=>p.id!==id));
+    DB.set('transactions',(DB.get('transactions')||[]).filter(t=>t.programId!==id));
+    toast('Programme deleted','success'); closeModal('deleteModal');
+    if(currentUser.role==='superadmin') renderFinancePage(); else renderAdminFinancePage();
+  };
+  openModal('deleteModal');
+}
+
+// TRANSACTION CRUD
+function openAddTxn(prefillProgId) {
+  document.getElementById('txnModalTitle').textContent='💳 Add Transaction';
+  const progs=DB.get('programs')||[];
+  const select=document.getElementById('txnProg');
+  select.innerHTML='<option value="">Select Programme</option>'+progs.map(p=>`<option value="${p.id}"${p.id===prefillProgId?' selected':''}>${p.name} (${p.date||''})</option>`).join('');
+  document.getElementById('txnAmount').value=''; document.getElementById('txnDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('txnDetails').value=''; document.getElementById('txnRef').value=''; document.getElementById('txnEditId').value='';
+  document.querySelector('input[name="txnType"][value="credit"]').checked=true;
+  document.getElementById('txnMethod').value='Cash';
+  document.getElementById('txnNoPermMsg').style.display='none';
+  openModal('txnModal');
+}
+function editTxn(id) {
+  const t=(DB.get('transactions')||[]).find(x=>x.id===id); if(!t) return;
+  document.getElementById('txnModalTitle').textContent='✏️ Edit Transaction';
+  const progs=DB.get('programs')||[];
+  const select=document.getElementById('txnProg');
+  select.innerHTML='<option value="">Select Programme</option>'+progs.map(p=>`<option value="${p.id}"${p.id===t.programId?' selected':''}>${p.name}</option>`).join('');
+  document.querySelector(`input[name="txnType"][value="${t.type}"]`).checked=true;
+  document.getElementById('txnAmount').value=t.amount;
+  document.getElementById('txnDate').value=t.date||'';
+  document.getElementById('txnDetails').value=t.details||'';
+  document.getElementById('txnMethod').value=t.method||'Cash';
+  document.getElementById('txnRef').value=t.ref||'';
+  document.getElementById('txnEditId').value=id;
+  openModal('txnModal');
+}
+function checkProgPerm() {
+  if(currentUser.role!=='admin') return;
+  const pid=document.getElementById('txnProg').value;
+  const allowed=currentUser.progPerms||[];
+  if(pid && !allowed.includes(pid)) document.getElementById('txnNoPermMsg').style.display='block';
+  else document.getElementById('txnNoPermMsg').style.display='none';
+}
+function saveTxn() {
+  const progId=document.getElementById('txnProg').value;
+  const type=document.querySelector('input[name="txnType"]:checked')?.value;
+  const amount=parseFloat(document.getElementById('txnAmount').value);
+  const date=document.getElementById('txnDate').value;
+  const details=document.getElementById('txnDetails').value.trim();
+  const method=document.getElementById('txnMethod').value;
+  const ref=document.getElementById('txnRef').value.trim();
+  if(!progId||!type||!amount||!date||!details) { toast('All required fields must be filled','error'); return; }
+  if(isNaN(amount)||amount<=0) { toast('Enter a valid amount','error'); return; }
+  if(currentUser.role==='admin') {
+    const allowed=currentUser.progPerms||[];
+    if(!allowed.includes(progId)) { toast('No permission for this programme','error'); return; }
+  }
+  const txns=DB.get('transactions')||[], editId=document.getElementById('txnEditId').value;
+  const data={id:editId||'T'+Date.now(),programId:progId,type,amount,date,details,method,ref,addedBy:currentUser.email,createdAt:new Date().toISOString()};
+  if(editId) { txns[txns.findIndex(t=>t.id===editId)]=data; toast('Transaction updated','success'); }
+  else { txns.push(data); toast('Transaction added','success'); }
+  DB.set('transactions',txns); closeModal('txnModal');
+  if(currentUser.role==='superadmin') renderFinancePage(); else renderAdminFinancePage();
+}
+function confirmDeleteTxn(id) {
+  document.getElementById('deleteMsg').textContent='Delete this transaction? This cannot be undone.';
+  document.getElementById('deleteConfirmBtn').onclick=()=>{
+    DB.set('transactions',(DB.get('transactions')||[]).filter(t=>t.id!==id));
+    toast('Transaction deleted','success'); closeModal('deleteModal');
+    if(currentUser.role==='superadmin') renderFinancePage(); else renderAdminFinancePage();
+  };
+  openModal('deleteModal');
+}
+function exportFinanceExcel() {
+  const progs=DB.get('programs')||[], txns=DB.get('transactions')||[];
+  const rows=[];
+  progs.forEach(p=>{
+    const pt=txns.filter(t=>t.programId===p.id);
+    const cr=pt.filter(t=>t.type==='credit').reduce((a,b)=>a+b.amount,0);
+    const db=pt.filter(t=>t.type==='debit').reduce((a,b)=>a+b.amount,0);
+    rows.push({'Programme':p.name,'Date':p.date,'Type':'SUMMARY','Details':'','Method':'','Ref':'','Credit':cr,'Debit':db,'Balance':cr-db});
+    pt.forEach(t=>rows.push({'Programme':p.name,'Date':t.date,'Type':t.type.toUpperCase(),'Details':t.details,'Method':t.method,'Ref':t.ref,'Credit':t.type==='credit'?t.amount:0,'Debit':t.type==='debit'?t.amount:0,'Balance':''}));
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Finance');
+  XLSX.writeFile(wb,'MSM_Finance_'+financeYear+'.xlsx');
+  toast('Finance exported','success');
+}
+
+// ============================================================
+// SETTINGS PAGE
+// ============================================================
+function renderSettingsPage() {
+  const sa=DB.get('superadmin')||{};
+  document.getElementById('pageContent').innerHTML=`
+    <div class="card">
+      <div class="card-header"><div class="card-title">⚙️ Organisation Settings</div></div>
+      <div class="form-group"><label>Organisation Name</label><input type="text" id="settingsOrgName" value="${sa.orgName||'MSM KURUKA UNIT'}"></div>
+      <div class="form-group"><label>Logo</label>
+        <div class="logo-upload-area">
+          <div id="settingsLogoPreview" class="current-logo-ph">${DB.get('logo')?`<img src="${DB.get('logo')}" class="current-logo">`:'🏛️'}</div>
+          <button class="btn btn-outline btn-sm" onclick="openModal('logoModal');logoModalData=null;document.getElementById('logoModalPreview').innerHTML=DB.get('logo')?'<img src=\\''+DB.get('logo')+'\\' class=\\'current-logo\\'>':'🏛️';">✏️ Change Logo</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="card-title" style="margin-bottom:16px;">👤 Super Admin Profile</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Name</label><input type="text" id="settingsSAName" value="${sa.name||''}"></div>
+        <div class="form-group"><label>Mobile</label><input type="tel" id="settingsSAPhone" value="${sa.phone||''}"></div>
+        <div class="form-group form-full"><label>Email</label><input type="email" id="settingsSAEmail" value="${sa.email||''}"></div>
+        <div class="form-group"><label>New Password (leave blank to keep)</label><div class="input-eye"><input type="password" id="settingsSAPass" placeholder="New password"><button class="eye-btn" onclick="togglePass('settingsSAPass')">👁</button></div></div>
+        <div class="form-group"><label>Confirm Password</label><div class="input-eye"><input type="password" id="settingsSAPassConf" placeholder="Confirm"><button class="eye-btn" onclick="togglePass('settingsSAPassConf')">👁</button></div></div>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+    <div class="card" style="border-color:rgba(255,59,92,0.3)">
+      <div class="card-header"><div class="card-title" style="color:var(--danger)">⚠ Danger Zone</div></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">These actions are irreversible. Please be certain.</p>
+      <button class="btn btn-danger" onclick="clearAllData()">🗑 Clear All Data</button>
+    </div>`;
+}
+
+function saveSettings() {
+  const sa=DB.get('superadmin');
+  sa.orgName=document.getElementById('settingsOrgName').value.trim()||'MSM KURUKA UNIT';
+  sa.name=document.getElementById('settingsSAName').value.trim();
+  sa.phone=document.getElementById('settingsSAPhone').value.trim();
+  sa.email=document.getElementById('settingsSAEmail').value.trim();
+  const np=document.getElementById('settingsSAPass').value;
+  const cp=document.getElementById('settingsSAPassConf').value;
+  if(np) { if(np!==cp){toast('Passwords do not match','error');return;} sa.pass=np; }
+  DB.set('superadmin',sa);
+  currentUser={...currentUser,...sa};
+  document.getElementById('userNameDisplay').textContent=sa.name;
+  document.getElementById('userEmailDisplay').textContent=sa.email;
+  updateLogos();
+  toast('Settings saved','success');
+}
+
+function clearAllData() {
+  document.getElementById('deleteMsg').textContent='⚠ This will DELETE ALL members, transactions, and programmes. Super admin account will be kept. Are you absolutely sure?';
+  document.getElementById('deleteConfirmBtn').onclick=()=>{
+    DB.set('members',[]); DB.set('admins',[]); DB.set('programs',[]); DB.set('transactions',[]);
+    toast('All data cleared','warning'); closeModal('deleteModal'); renderSettingsPage();
+  };
+  openModal('deleteModal');
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  cons
